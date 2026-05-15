@@ -6,6 +6,7 @@ import { Clock, MapPin, Package, ChevronRight } from 'lucide-react-native';
 import { DonorTabParamList } from '../../navigation/types';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../api';
+import { useAuthStore } from '../../store/authStore';
 
 // Normally this would be shared, but defining locally for now
 export interface Listing {
@@ -46,6 +47,10 @@ export const DonorHomeScreen = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchListings();
+  };
+
+  const handleLogout = async () => {
+    await useAuthStore.getState().logout();
   };
 
   const getStatusColor = (status: string) => {
@@ -109,7 +114,12 @@ export const DonorHomeScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Donations</Text>
+        <View style={styles.headerTopRow}>
+          <Text style={styles.headerTitle}>My Donations</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerSubtitle}>Thank you for sharing food today!</Text>
       </View>
 
@@ -150,6 +160,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logoutButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.s,
+    backgroundColor: colors.error + '10',
+    borderRadius: 8,
+  },
+  logoutText: {
+    ...typography.caption,
+    color: colors.error,
+    fontWeight: '700',
   },
   headerTitle: {
     ...typography.heading,
