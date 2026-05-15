@@ -1,11 +1,19 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-// In development, you might want to switch this based on emulator/device
-// 10.0.2.2 is the special IP alias to your host loopback interface for Android Emulator
-// For iOS Simulator, localhost works.
-// For physical devices, you need your computer's local IP address.
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3000/api';
+import { Platform } from 'react-native';
+
+// In development:
+// - Web or iOS Simulator: localhost works
+// - Android Emulator: 10.0.2.2 is required to reach the host machine
+// - Physical device: You need your actual Wi-Fi IP address
+const getBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3000/api';
+  return 'http://localhost:3000/api';
+};
+
+export const API_URL = getBaseUrl();
 
 export const api = axios.create({
   baseURL: API_URL,

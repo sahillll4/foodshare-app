@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 export type UserRole = 'donor' | 'receiver' | 'courier';
 
@@ -23,16 +25,33 @@ interface AuthState {
   loadStoredAuth: () => Promise<void>;
 }
 
+// Fallback to AsyncStorage on Web since SecureStore throws an error
+const setStorageItem = async (key: string, value: string) => {
+  if (Platform.OS === 'web') return AsyncStorage.setItem(key, value);
+  return SecureStore.setItemAsync(key, value);
+};
+
+const getStorageItem = async (key: string) => {
+  if (Platform.OS === 'web') return AsyncStorage.getItem(key);
+  return SecureStore.getItemAsync(key);
+};
+
+const deleteStorageItem = async (key: string) => {
+  if (Platform.OS === 'web') return AsyncStorage.removeItem(key);
+  return SecureStore.deleteItemAsync(key);
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   user: null,
   isLoading: true,
 
   setAuth: async (token: string, user: User) => {
+    // ALWAYS update state immediately so the UI reacts, even if storage fails
+    set({ token, user });
     try {
-      await SecureStore.setItemAsync('jwt_token', token);
-      await SecureStore.setItemAsync('user_data', JSON.stringify(user));
-      set({ token, user });
+      await setStorageItem('jwt_token', token);
+      await setStorageItem('user_data', JSON.stringify(user));
     } catch (error) {
       console.error('Failed to securely store auth data', error);
     }
@@ -42,17 +61,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set((state) => {
       if (!state.user) return state;
       const newUser = { ...state.user, ...updatedFields };
-      // Fire and forget secure store update
-      SecureStore.setItemAsync('user_data', JSON.stringify(newUser)).catch(e => console.error(e));
+      setStorageItem('user_data', JSON.stringify(newUser)).catch(e => console.error(e));
       return { user: newUser };
     });
   },
 
   logout: async () => {
+    set({ token: null, user: null });
     try {
-      await SecureStore.deleteItemAsync('jwt_token');
-      await SecureStore.deleteItemAsync('user_data');
-      set({ token: null, user: null });
+      await deleteStorageItem('jwt_token');
+      await deleteStorageItem('user_data');
     } catch (error) {
       console.error('Failed to remove auth data', error);
     }
@@ -60,8 +78,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   loadStoredAuth: async () => {
     try {
-      const token = await SecureStore.getItemAsync('jwt_token');
-      const userDataStr = await SecureStore.getItemAsync('user_data');
+      const token = await getStorageItem('jwt_token');
+      const userDataStr = await getStorageItem('user_data');
       
       if (token && userDataStr) {
         set({ token, user: JSON.parse(userDataStr), isLoading: false });
