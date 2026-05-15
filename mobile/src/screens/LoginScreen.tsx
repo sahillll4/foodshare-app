@@ -26,15 +26,12 @@ export const LoginScreen = () => {
     Alert.alert('Firebase Auth Required', 'Firebase is not yet configured. Please use the Dev Bypass button to test the app.');
   };
 
-  const handleDevBypass = async () => {
+  const handleDevBypass = async (role: string) => {
     setIsLoading(true);
     try {
       // Calls the /dev-login endpoint we just added to the backend
-      const response = await api.post('/auth/dev-login', { phone: '+1234567890', role: 'donor' });
+      const response = await api.post('/auth/dev-login', { phone: role === 'donor' ? '+1234567890' : '+0987654321', role });
       await setAuth(response.data.token, response.data.user);
-      // If it's a new user, they should go to ProfileSetup. 
-      // But RootNavigator will automatically swap out the AuthStack for AppNavigator because token is now set.
-      // We need to handle new user state gracefully, but for now it'll jump straight to DonorHome.
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Dev login failed. Is the backend running?');
@@ -70,13 +67,26 @@ export const LoginScreen = () => {
         </TouchableOpacity>
 
         {__DEV__ && (
-          <TouchableOpacity 
-            style={[styles.button, styles.devButton]}
-            onPress={handleDevBypass}
-            disabled={isLoading}
-          >
-            <Text style={styles.devButtonText}>🛠 DEV: Bypass Login</Text>
-          </TouchableOpacity>
+          <View style={styles.devContainer}>
+            <Text style={styles.devLabel}>🛠 DEV TESTING</Text>
+            <View style={styles.devRow}>
+              <TouchableOpacity 
+                style={[styles.button, styles.devButton]}
+                onPress={() => handleDevBypass('donor')}
+                disabled={isLoading}
+              >
+                <Text style={styles.devButtonText}>Login Donor</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.button, styles.devButton]}
+                onPress={() => handleDevBypass('receiver')}
+                disabled={isLoading}
+              >
+                <Text style={styles.devButtonText}>Login Receiver</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -125,11 +135,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  devContainer: {
+    marginTop: spacing.xxl,
+    alignItems: 'center',
+  },
+  devLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.s,
+    fontWeight: '700',
+  },
+  devRow: {
+    flexDirection: 'row',
+    gap: spacing.m,
+    width: '100%',
+  },
   devButton: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.primary,
-    marginTop: spacing.xxl,
   },
   devButtonText: {
     color: colors.primary,

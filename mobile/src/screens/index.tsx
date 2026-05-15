@@ -8,7 +8,7 @@ export const ProfileSetupScreen = () => <View style={styles.container}><Text>Pro
 export { DonorHomeScreen } from './donor/DonorHomeScreen';
 export const PostListingScreen = () => <View style={styles.container}><Text>Post Listing</Text></View>;
 
-export const ReceiverMapScreen = () => <View style={styles.container}><Text>Receiver Map</Text></View>;
+export { ReceiverMapScreen } from './receiver/ReceiverMapScreen';
 export const ReceiverHistoryScreen = () => <View style={styles.container}><Text>Receiver History</Text></View>;
 
 export const JobBoardScreen = () => <View style={styles.container}><Text>Courier Job Board</Text></View>;
