@@ -1,0 +1,195 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Connection URL is configured in prisma.config.ts (Prisma v7+)
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone        String   @unique @db.VarChar(15)
+  name         String?  @db.VarChar(100)
+  primaryRole  String   @db.VarChar(20)   // donor | receiver | courier
+  avatarUrl    String?
+  orgName      String?
+  orgType      String?                    // NGO | catering | individual
+  verified     Boolean  @default(false)
+  isAdmin      Boolean  @default(false)
+  ratingAvg    Decimal  @default(0) @db.Decimal(2, 1)
+  ratingCount  Int      @default(0)
+  impactMeals  Int      @default(0)
+  impactPoints Int      @default(0)       // courier gamification points
+  fcmToken     String?                    // device push token
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  roles         UserRole[]
+  listings      FoodListing[]    @relation("DonorListings")
+  claims        Claim[]          @relation("ReceiverClaims")
+  courierJobs   CourierJob[]     @relation("CourierJobs")
+  sentMessages  Message[]        @relation("SentMessages")
+  ratingsGiven  Rating[]         @relation("RatingsGiven")
+  ratingsReceived Rating[]       @relation("RatingsReceived")
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  role   String @db.VarChar(20)  // donor | receiver | courier
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@map("user_roles")
+}
+
+// ─── Food Listings ────────────────────────────────────────────────────────────
+
+model FoodListing {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  donorId           String   @db.Uuid
+  title             String   @db.VarChar(200)
+  description       String?
+  foodType          String   @db.VarChar(10)   // veg | non_veg | both
+  quantityText      String?  @db.VarChar(100)  // e.g. "approx 50 servings"
+  quantityNum       Int?                        // estimated people it feeds
+  photoUrl          String?
+  // Location stored as lat/lng floats — PostGIS GEOGRAPHY handled via raw SQL for ST_DWithin
+  latitude          Float?
+  longitude         Float?
+  addressText       String?
+  pickupStart       DateTime
+  pickupEnd         DateTime                    // deadline
+  status            String   @default("live")  // live|claimed|picked_up|delivered|expired|cancelled
+  allergenNotes     String?
+  packagingNotes    String?
+  requiresColdChain Boolean  @default(false)
+  needsCourier      Boolean  @default(false)
+  isScheduled       Boolean  @default(false)
+  flagged           Boolean  @default(false)
+  flagReason        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  donor       User         @relation("DonorListings", fields: [donorId], references: [id])
+  claims      Claim[]
+  courierJobs CourierJob[]
+  messages    Message[]
+  ratings     Rating[]
+
+  @@index([donorId])
+  @@index([status])
+  @@index([pickupEnd])
+  @@map("food_listings")
+}
+
+// ─── Claims ───────────────────────────────────────────────────────────────────
+
+model Claim {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listingId   String    @db.Uuid
+  receiverId  String    @db.Uuid
+  claimedAt   DateTime  @default(now())
+  collectedAt DateTime?
+  expiresAt   DateTime?                   // auto-release deadline (claimedAt + 30 min)
+  status      String    @default("active") // active | collected | cancelled | expired
+
+  // Relations
+  listing    FoodListing  @relation(fields: [listingId], references: [id])
+  receiver   User         @relation("ReceiverClaims", fields: [receiverId], references: [id])
+  courierJob CourierJob?
+
+  @@index([listingId])
+  @@index([receiverId])
+  @@map("claims")
+}
+
+// ─── Courier Jobs ─────────────────────────────────────────────────────────────
+
+model CourierJob {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listingId   String    @db.Uuid
+  claimId     String?   @unique @db.Uuid
+  courierId   String?   @db.Uuid
+  acceptedAt  DateTime?
+  pickedUpAt  DateTime?
+  deliveredAt DateTime?
+  status      String    @default("open")   // open | accepted | picked_up | delivered | cancelled
+  vehicleType String?                      // bike | car | auto | walk
+
+  // Relations
+  listing FoodListing @relation(fields: [listingId], references: [id])
+  claim   Claim?      @relation(fields: [claimId], references: [id])
+  courier User?       @relation("CourierJobs", fields: [courierId], references: [id])
+
+  @@index([listingId])
+  @@index([courierId])
+  @@index([status])
+  @@map("courier_jobs")
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+model Message {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listingId  String   @db.Uuid
+  senderId   String   @db.Uuid
+  receiverId String   @db.Uuid
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  listing  FoodListing @relation(fields: [listingId], references: [id])
+  sender   User        @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([listingId])
+  @@map("messages")
+}
+
+// ─── Ratings ──────────────────────────────────────────────────────────────────
+
+model Rating {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listingId String   @db.Uuid
+  raterId   String   @db.Uuid
+  ratedId   String   @db.Uuid
+  score     Int                      // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  listing FoodListing @relation(fields: [listingId], references: [id])
+  rater   User        @relation("RatingsGiven", fields: [raterId], references: [id])
+  rated   User        @relation("RatingsReceived", fields: [ratedId], references: [id])
+
+  @@unique([listingId, raterId, ratedId])
+  @@map("ratings")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  type      String   @db.VarChar(50)  // new_listing | claimed | reminder | delivered | message
+  title     String
+  body      String
+  data      Json?                     // extra payload (listingId, screen, etc.)
+  read      Boolean  @default(false)
+  sentAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("notifications")
+}
