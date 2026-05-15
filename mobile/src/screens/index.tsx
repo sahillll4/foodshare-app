@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export const LoginScreen = () => <View style={styles.container}><Text>Login Screen</Text></View>;
+export { LoginScreen } from './LoginScreen';
 export const OtpVerifyScreen = () => <View style={styles.container}><Text>OTP Verify Screen</Text></View>;
 export const ProfileSetupScreen = () => <View style={styles.container}><Text>Profile Setup Screen</Text></View>;
 
-export const DonorHomeScreen = () => <View style={styles.container}><Text>Donor Home</Text></View>;
+export { DonorHomeScreen } from './donor/DonorHomeScreen';
 export const PostListingScreen = () => <View style={styles.container}><Text>Post Listing</Text></View>;
 
 export const ReceiverMapScreen = () => <View style={styles.container}><Text>Receiver Map</Text></View>;

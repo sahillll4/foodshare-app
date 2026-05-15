@@ -54,6 +54,44 @@ router.post('/verify-otp', async (req, res: Response): Promise<void> => {
   }
 });
 
+// DEV ONLY: Bypass Firebase OTP for local testing
+if (process.env.NODE_ENV !== 'production') {
+  router.post('/dev-login', async (req, res: Response): Promise<void> => {
+    try {
+      const { phone = '+1234567890', role = 'donor' } = req.body as { phone?: string; role?: string };
+      
+      let user = await prisma.user.findUnique({ where: { phone }, include: { roles: true } });
+      const isNewUser = !user;
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: { phone, primaryRole: role, name: `Dev ${role}` },
+          include: { roles: true },
+        });
+      }
+
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
+
+      res.json({
+        token,
+        isNewUser,
+        user: {
+          id: user.id,
+          phone: user.phone,
+          name: user.name,
+          primaryRole: user.primaryRole,
+          roles: user.roles.map((r) => r.role),
+          verified: true, // Auto-verify dev users
+          avatarUrl: user.avatarUrl,
+        },
+      });
+    } catch (err) {
+      console.error('Dev login error:', err);
+      res.status(500).json({ error: 'Dev login failed' });
+    }
+  });
+}
+
 router.post('/profile', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, primaryRole, roles, orgName, orgType } = req.body as {
