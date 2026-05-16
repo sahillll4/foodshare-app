@@ -16,9 +16,11 @@ export { ReceiverHistoryScreen } from './receiver/ReceiverHistoryScreen';
 export { ListingDetailScreen } from './receiver/ListingDetailScreen';
 export { ActiveClaimScreen } from './receiver/ActiveClaimScreen';
 
-// Courier (Phase 4 - placeholders)
-export const JobBoardScreen = () => <View style={s.c}><Text>Courier Job Board (Phase 4)</Text></View>;
-export const ActiveJobScreen = () => <View style={s.c}><Text>Courier Active Job (Phase 4)</Text></View>;
+// Courier
+export { JobBoardScreen } from './courier/JobBoardScreen';
+export { JobDetailScreen } from './courier/JobDetailScreen';
+export { ActiveJobScreen } from './courier/ActiveJobScreen';
+export { CourierHistoryScreen } from './courier/CourierHistoryScreen';
 
 // Shared
 export const ProfileScreen = () => <View style={s.c}><Text>Profile (coming soon)</Text></View>;

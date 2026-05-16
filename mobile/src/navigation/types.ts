@@ -20,7 +20,7 @@ export type ReceiverTabParamList = {
 
 export type CourierTabParamList = {
   JobBoard: undefined;
-  ActiveJob: { jobId: string };
+  CourierHistory: undefined;
   CourierProfile: undefined;
 };
 
@@ -32,6 +32,8 @@ export type AppStackParamList = {
   ListingDetail: { listingId: string };
   ActiveClaim: { claimId: string; listingId: string };
   Chat: { listingId: string; title: string };
+  JobDetail: { jobId: string };
+  ActiveJob: { jobId: string };
 };
 
 export type RootStackParamList = {
