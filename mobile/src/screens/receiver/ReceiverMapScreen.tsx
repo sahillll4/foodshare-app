@@ -1,22 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
-import { Filter, MapPin } from 'lucide-react-native';
-import { ReceiverTabParamList } from '../../navigation/types';
+import { Filter } from 'lucide-react-native';
+import { AppStackParamList } from '../../navigation/types';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../api';
-import { Listing } from '../donor/DonorHomeScreen'; // sharing type for now
 
-type NavigationProp = NativeStackNavigationProp<ReceiverTabParamList, 'ReceiverMap'>;
+type NavigationProp = NativeStackNavigationProp<AppStackParamList>;
+
+export interface Listing {
+  id: string;
+  title: string;
+  foodType: 'veg' | 'non-veg' | 'both';
+  quantityNum: number;
+  quantityText: string;
+  status: 'live' | 'claimed' | 'picked_up' | 'delivered' | 'cancelled';
+  pickupStart: string;
+  pickupEnd: string;
+  photoUrl: string | null;
+  latitude: number;
+  longitude: number;
+  addressText: string;
+  requiresColdChain: boolean;
+  donor: {
+    id: string;
+    name: string | null;
+    ratingAvg: number;
+  };
+}
+
+const FOOD_TYPE_COLORS = {
+  veg: colors.success,
+  'non-veg': '#DC2626',
+  both: colors.primary,
+};
 
 export const ReceiverMapScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Default to Pune for MVP
   const [region, setRegion] = useState({
     latitude: 18.5204,
     longitude: 73.8567,
@@ -24,56 +49,30 @@ export const ReceiverMapScreen = () => {
     longitudeDelta: 0.05,
   });
 
-  const fetchNearbyFood = async (lat: number, lng: number) => {
+  const fetchNearbyFood = useCallback(async (lat: number, lng: number) => {
     try {
       setIsLoading(true);
-      // Hardcoding radius 10000 meters (10km) for now
       const response = await api.get(`/listings?lat=${lat}&lng=${lng}&radius=10000`);
-      setListings(response.data.listings);
+      setListings(response.data.listings ?? []);
     } catch (error) {
       console.error('Failed to fetch nearby food:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchNearbyFood(region.latitude, region.longitude);
   }, []);
 
-  // Web fallback UI because react-native-maps requires a Google Maps API key on the web
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.webFallbackContainer}>
-        <MapPin size={48} color={colors.primary} />
-        <Text style={styles.webFallbackTitle}>Map View (Mobile Only)</Text>
-        <Text style={styles.webFallbackText}>
-          The interactive map requires native iOS/Android to render properly without a Google Maps Web API key.
-        </Text>
-        <Text style={styles.webFallbackSubtitle}>
-          Nearby Food (List View Fallback):
-        </Text>
-        <View style={styles.webList}>
-          {listings.map(item => (
-            <View key={item.id} style={styles.webListItem}>
-              <Text style={{ fontWeight: 'bold' }}>{item.title}</Text>
-              <Text>{item.quantityText} • {item.foodType.toUpperCase()}</Text>
-            </View>
-          ))}
-          {listings.length === 0 && !isLoading && (
-            <Text style={{ color: colors.textSecondary }}>No food nearby</Text>
-          )}
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Search / Filter Bar Overlay */}
+      {/* Floating Search/Filter Bar */}
       <View style={styles.searchBarContainer}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchText}>Searching nearby...</Text>
+          <Text style={styles.searchText}>
+            {isLoading ? 'Finding food nearby...' : `${listings.length} listings found`}
+          </Text>
           <TouchableOpacity style={styles.filterButton}>
             <Filter size={20} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -86,35 +85,31 @@ export const ReceiverMapScreen = () => {
         initialRegion={region}
         onRegionChangeComplete={(newRegion) => {
           setRegion(newRegion);
-          // In a real app, debounce this fetch
-          fetchNearbyFood(newRegion.latitude, newRegion.longitude);
         }}
         showsUserLocation
+        showsMyLocationButton
       >
         {listings.map((listing) => (
           <Marker
             key={listing.id}
-            // Mocking coordinates based on Pune center for now since we haven't exposed lat/lng in the API type yet
-            // In a real scenario, listing would have .latitude and .longitude
-            coordinate={{ 
-              latitude: 18.5204 + (Math.random() - 0.5) * 0.02, 
-              longitude: 73.8567 + (Math.random() - 0.5) * 0.02 
+            coordinate={{
+              latitude: listing.latitude,
+              longitude: listing.longitude,
             }}
             title={listing.title}
-            description={`${listing.quantityText} • ${listing.foodType}`}
-            pinColor={listing.foodType === 'veg' ? colors.success : colors.error}
+            description={`${listing.quantityNum} ${listing.quantityText} • ${listing.foodType.toUpperCase()}`}
+            pinColor={FOOD_TYPE_COLORS[listing.foodType]}
             onCalloutPress={() => {
-              // Navigate to listing detail
-              console.log('Claim food:', listing.id);
+              navigation.navigate('ListingDetail', { listingId: listing.id });
             }}
           />
         ))}
       </MapView>
 
-      {/* Recenter / Load indicator */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.loadingText}>Searching...</Text>
         </View>
       )}
     </View>
@@ -132,7 +127,7 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     position: 'absolute',
-    top: 60, // Safe area approx
+    top: 60,
     left: spacing.m,
     right: spacing.m,
     zIndex: 10,
@@ -147,7 +142,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 5,
   },
@@ -162,51 +157,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 40,
     alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
-    padding: spacing.m,
+    paddingHorizontal: spacing.l,
+    paddingVertical: spacing.m,
     borderRadius: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    gap: spacing.s,
   },
-  // Web Fallback Styles
-  webFallbackContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  webFallbackTitle: {
-    ...typography.heading,
-    marginTop: spacing.m,
-    textAlign: 'center',
-  },
-  webFallbackText: {
-    ...typography.body,
+  loadingText: {
+    ...typography.caption,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.m,
-    marginBottom: spacing.xxl,
-  },
-  webFallbackSubtitle: {
-    ...typography.subhead,
-    alignSelf: 'flex-start',
-    marginBottom: spacing.m,
-  },
-  webList: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.m,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  webListItem: {
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 });

@@ -20,15 +20,18 @@ export type ReceiverTabParamList = {
 
 export type CourierTabParamList = {
   JobBoard: undefined;
-  ActiveJob: undefined;
+  ActiveJob: { jobId: string };
   CourierProfile: undefined;
 };
 
+// Shared modal / full-screen stack screens accessible from any role
 export type AppStackParamList = {
   DonorTabs: NavigatorScreenParams<DonorTabParamList>;
   ReceiverTabs: NavigatorScreenParams<ReceiverTabParamList>;
   CourierTabs: NavigatorScreenParams<CourierTabParamList>;
   ListingDetail: { listingId: string };
+  ActiveClaim: { claimId: string; listingId: string };
+  Chat: { listingId: string; title: string };
 };
 
 export type RootStackParamList = {

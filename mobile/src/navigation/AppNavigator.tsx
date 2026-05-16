@@ -5,18 +5,29 @@ import { Home, PlusCircle, Map as MapIcon, ClipboardList, User as UserIcon, Truc
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme';
 import {
-  DonorHomeScreen, PostListingScreen, ProfileScreen,
+  DonorHomeScreen, PostListingScreen,
   ReceiverMapScreen, ReceiverHistoryScreen,
-  JobBoardScreen, ActiveJobScreen
+  JobBoardScreen, ActiveJobScreen,
+  ProfileScreen,
+  ListingDetailScreen,
+  ActiveClaimScreen,
+  ChatScreen,
 } from '../screens';
-import { DonorTabParamList, ReceiverTabParamList, CourierTabParamList } from './types';
+import { DonorTabParamList, ReceiverTabParamList, CourierTabParamList, AppStackParamList } from './types';
 
 const DonorTab = createBottomTabNavigator<DonorTabParamList>();
 const ReceiverTab = createBottomTabNavigator<ReceiverTabParamList>();
 const CourierTab = createBottomTabNavigator<CourierTabParamList>();
+const AppStack = createNativeStackNavigator<AppStackParamList>();
+
+const tabBarOptions = {
+  tabBarActiveTintColor: colors.primary,
+  tabBarInactiveTintColor: colors.textSecondary,
+  headerShown: false,
+};
 
 const DonorTabs = () => (
-  <DonorTab.Navigator screenOptions={{ tabBarActiveTintColor: colors.primary }}>
+  <DonorTab.Navigator screenOptions={tabBarOptions}>
     <DonorTab.Screen name="DonorHome" component={DonorHomeScreen} options={{ title: 'My Listings', tabBarIcon: ({ color }) => <Home color={color} size={24} /> }} />
     <DonorTab.Screen name="PostListing" component={PostListingScreen} options={{ title: 'Post Food', tabBarIcon: ({ color }) => <PlusCircle color={color} size={24} /> }} />
     <DonorTab.Screen name="DonorProfile" component={ProfileScreen} options={{ title: 'Profile', tabBarIcon: ({ color }) => <UserIcon color={color} size={24} /> }} />
@@ -24,7 +35,7 @@ const DonorTabs = () => (
 );
 
 const ReceiverTabs = () => (
-  <ReceiverTab.Navigator screenOptions={{ tabBarActiveTintColor: colors.primary }}>
+  <ReceiverTab.Navigator screenOptions={tabBarOptions}>
     <ReceiverTab.Screen name="ReceiverMap" component={ReceiverMapScreen} options={{ title: 'Nearby Food', tabBarIcon: ({ color }) => <MapIcon color={color} size={24} /> }} />
     <ReceiverTab.Screen name="ReceiverHistory" component={ReceiverHistoryScreen} options={{ title: 'My Claims', tabBarIcon: ({ color }) => <ClipboardList color={color} size={24} /> }} />
     <ReceiverTab.Screen name="ReceiverProfile" component={ProfileScreen} options={{ title: 'Profile', tabBarIcon: ({ color }) => <UserIcon color={color} size={24} /> }} />
@@ -32,19 +43,39 @@ const ReceiverTabs = () => (
 );
 
 const CourierTabs = () => (
-  <CourierTab.Navigator screenOptions={{ tabBarActiveTintColor: colors.primary }}>
+  <CourierTab.Navigator screenOptions={tabBarOptions}>
     <CourierTab.Screen name="JobBoard" component={JobBoardScreen} options={{ title: 'Job Board', tabBarIcon: ({ color }) => <ClipboardList color={color} size={24} /> }} />
     <CourierTab.Screen name="ActiveJob" component={ActiveJobScreen} options={{ title: 'Active Job', tabBarIcon: ({ color }) => <Truck color={color} size={24} /> }} />
     <CourierTab.Screen name="CourierProfile" component={ProfileScreen} options={{ title: 'Profile', tabBarIcon: ({ color }) => <UserIcon color={color} size={24} /> }} />
   </CourierTab.Navigator>
 );
 
-export const AppNavigator = () => {
+const RoleTabs = () => {
   const primaryRole = useAuthStore((state) => state.user?.primaryRole);
-
   if (primaryRole === 'receiver') return <ReceiverTabs />;
   if (primaryRole === 'courier') return <CourierTabs />;
-  
-  // Default to donor if role is somehow missing or explicitly 'donor'
   return <DonorTabs />;
+};
+
+export const AppNavigator = () => {
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="DonorTabs" component={RoleTabs} />
+      <AppStack.Screen
+        name="ListingDetail"
+        component={ListingDetailScreen}
+        options={{ headerShown: true, title: 'Food Details', headerBackTitle: 'Back' }}
+      />
+      <AppStack.Screen
+        name="ActiveClaim"
+        component={ActiveClaimScreen}
+        options={{ headerShown: true, title: 'Active Claim', headerBackTitle: 'Back' }}
+      />
+      <AppStack.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={({ route }) => ({ headerShown: true, title: route.params.title, headerBackTitle: 'Back' })}
+      />
+    </AppStack.Navigator>
+  );
 };

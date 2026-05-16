@@ -1,21 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
+// Auth
 export { LoginScreen } from './LoginScreen';
-export const OtpVerifyScreen = () => <View style={styles.container}><Text>OTP Verify Screen</Text></View>;
-export const ProfileSetupScreen = () => <View style={styles.container}><Text>Profile Setup Screen</Text></View>;
+export const OtpVerifyScreen = () => <View style={s.c}><Text>OTP Verify (coming soon)</Text></View>;
+export const ProfileSetupScreen = () => <View style={s.c}><Text>Profile Setup (coming soon)</Text></View>;
 
+// Donor
 export { DonorHomeScreen } from './donor/DonorHomeScreen';
-export const PostListingScreen = () => <View style={styles.container}><Text>Post Listing</Text></View>;
+export { PostListingScreen } from './donor/PostListingScreen';
 
+// Receiver
 export { ReceiverMapScreen } from './receiver/ReceiverMapScreen';
-export const ReceiverHistoryScreen = () => <View style={styles.container}><Text>Receiver History</Text></View>;
+export { ReceiverHistoryScreen } from './receiver/ReceiverHistoryScreen';
+export { ListingDetailScreen } from './receiver/ListingDetailScreen';
+export { ActiveClaimScreen } from './receiver/ActiveClaimScreen';
 
-export const JobBoardScreen = () => <View style={styles.container}><Text>Courier Job Board</Text></View>;
-export const ActiveJobScreen = () => <View style={styles.container}><Text>Courier Active Job</Text></View>;
+// Courier (Phase 4 - placeholders)
+export const JobBoardScreen = () => <View style={s.c}><Text>Courier Job Board (Phase 4)</Text></View>;
+export const ActiveJobScreen = () => <View style={s.c}><Text>Courier Active Job (Phase 4)</Text></View>;
 
-export const ProfileScreen = () => <View style={styles.container}><Text>Shared Profile Screen</Text></View>;
+// Shared
+export const ProfileScreen = () => <View style={s.c}><Text>Profile (coming soon)</Text></View>;
+export const ChatScreen = () => <View style={s.c}><Text>Chat (Phase 5)</Text></View>;
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' }
-});
+const s = StyleSheet.create({ c: { flex: 1, justifyContent: 'center', alignItems: 'center' } });
