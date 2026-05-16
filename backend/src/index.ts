@@ -15,6 +15,8 @@ import ratingsRouter from './routes/ratings';
 import notificationsRouter from './routes/notifications';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
+import './workers/expiryWorker';
+
 const app = express();
 const server = http.createServer(app);
 

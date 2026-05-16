@@ -23,7 +23,8 @@ export { ActiveJobScreen } from './courier/ActiveJobScreen';
 export { CourierHistoryScreen } from './courier/CourierHistoryScreen';
 
 // Shared
-export const ProfileScreen = () => <View style={s.c}><Text>Profile (coming soon)</Text></View>;
+export { ProfileScreen } from './profile/ProfileScreen';
+export { RatingModalScreen } from './ratings/RatingModalScreen';
 export { ChatScreen } from './chat/ChatScreen';
 export { NotificationsScreen } from './notifications/NotificationsScreen';
 

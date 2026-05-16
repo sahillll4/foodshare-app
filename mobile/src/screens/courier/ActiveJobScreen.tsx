@@ -89,7 +89,18 @@ export const ActiveJobScreen = ({ route }: Props) => {
               Alert.alert(
                 '🎉 Delivery Complete!',
                 `You earned ${points} impact points! Great work.`,
-                [{ text: 'Done', onPress: () => navigation.goBack() }]
+                [{ text: 'Done', onPress: () => {
+                  navigation.goBack();
+                  setTimeout(() => {
+                    if (!job) return;
+                    navigation.navigate('RatingModal', {
+                      listingId: job.listing.id,
+                      ratedUserId: job.donor.id,
+                      ratedUserName: job.donor.name ?? 'Donor',
+                      roleTitle: 'Donor',
+                    });
+                  }, 500);
+                }}]
               );
             } catch {
               Alert.alert('Error', 'Failed to mark as delivered.');

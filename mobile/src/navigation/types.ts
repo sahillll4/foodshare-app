@@ -35,6 +35,12 @@ export type AppStackParamList = {
   JobDetail: { jobId: string };
   ActiveJob: { jobId: string };
   Notifications: undefined;
+  RatingModal: {
+    listingId: string;
+    ratedUserId: string;
+    ratedUserName: string;
+    roleTitle: string;
+  };
 };
 
 export type RootStackParamList = {

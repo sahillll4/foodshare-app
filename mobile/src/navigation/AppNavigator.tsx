@@ -15,6 +15,7 @@ import {
   JobDetailScreen,
   ActiveJobScreen,
   NotificationsScreen,
+  RatingModalScreen,
 } from '../screens';
 import {
   DonorTabParamList, ReceiverTabParamList,
@@ -101,5 +102,7 @@ export const AppNavigator = () => (
       }} />
     <AppStack.Screen name="Notifications" component={NotificationsScreen}
       options={{ headerShown: true, title: 'Notifications', headerBackTitle: 'Back' }} />
+    <AppStack.Screen name="RatingModal" component={RatingModalScreen}
+      options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
   </AppStack.Navigator>
 );

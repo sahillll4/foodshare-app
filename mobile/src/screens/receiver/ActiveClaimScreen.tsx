@@ -97,7 +97,18 @@ export const ActiveClaimScreen = ({ route }: Props) => {
               Alert.alert(
                 '✅ Collected!',
                 'Thank you! You made a difference today.',
-                [{ text: 'Done', onPress: () => navigation.goBack() }]
+                [{ text: 'Done', onPress: () => {
+                  navigation.goBack();
+                  setTimeout(() => {
+                    if (!claim) return;
+                    navigation.navigate('RatingModal', {
+                      listingId,
+                      ratedUserId: claim.listing.donor.id,
+                      ratedUserName: claim.listing.donor.name ?? 'Donor',
+                      roleTitle: 'Donor',
+                    });
+                  }, 500); // small delay to let the screen transition
+                }}]
               );
             } catch (error) {
               Alert.alert('Error', 'Failed to mark as collected. Please try again.');
