@@ -12,6 +12,7 @@ import claimsRouter from './routes/claims';
 import courierRouter from './routes/courier';
 import messagesRouter from './routes/messages';
 import ratingsRouter from './routes/ratings';
+import notificationsRouter from './routes/notifications';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
 const app = express();
@@ -75,6 +76,7 @@ app.use('/api/claims', claimsRouter);      // also accessible as /api/claims/:cl
 app.use('/api/courier', courierRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/ratings', ratingsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, PlusCircle, Map as MapIcon, ClipboardList, User as UserIcon, Truck, History } from 'lucide-react-native';
+import { Home, PlusCircle, Map as MapIcon, ClipboardList, User as UserIcon, Truck, History, Bell } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme';
 import {
@@ -14,6 +14,7 @@ import {
   ChatScreen,
   JobDetailScreen,
   ActiveJobScreen,
+  NotificationsScreen,
 } from '../screens';
 import {
   DonorTabParamList, ReceiverTabParamList,
@@ -82,10 +83,23 @@ export const AppNavigator = () => (
     <AppStack.Screen name="ActiveClaim" component={ActiveClaimScreen}
       options={{ headerShown: true, title: 'Active Claim', headerBackTitle: 'Back' }} />
     <AppStack.Screen name="Chat" component={ChatScreen}
-      options={({ route }) => ({ headerShown: true, title: route.params.title, headerBackTitle: 'Back' })} />
+      options={({ route }) => ({
+        headerShown: true,
+        title: route.params.title,
+        headerBackTitle: 'Back',
+        headerStyle: { backgroundColor: colors.surface },
+      })} />
     <AppStack.Screen name="JobDetail" component={JobDetailScreen}
       options={{ headerShown: true, title: 'Job Details', headerBackTitle: 'Back' }} />
     <AppStack.Screen name="ActiveJob" component={ActiveJobScreen}
-      options={{ headerShown: true, title: 'Active Delivery', headerBackTitle: 'Back', headerStyle: { backgroundColor: colors.primary }, headerTintColor: colors.surface }} />
+      options={{
+        headerShown: true,
+        title: 'Active Delivery',
+        headerBackTitle: 'Back',
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.surface,
+      }} />
+    <AppStack.Screen name="Notifications" component={NotificationsScreen}
+      options={{ headerShown: true, title: 'Notifications', headerBackTitle: 'Back' }} />
   </AppStack.Navigator>
 );

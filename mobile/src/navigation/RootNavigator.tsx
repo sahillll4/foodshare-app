@@ -5,6 +5,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme';
+import { connectSocket, disconnectSocket } from '../lib/socket';
 
 export const RootNavigator = () => {
   const { token, isLoading, loadStoredAuth } = useAuthStore();
@@ -12,6 +13,16 @@ export const RootNavigator = () => {
   useEffect(() => {
     loadStoredAuth();
   }, [loadStoredAuth]);
+
+  // Connect / disconnect socket when auth state changes
+  useEffect(() => {
+    if (token) {
+      connectSocket();
+    } else {
+      disconnectSocket();
+    }
+    return () => { /* keep socket alive until logout */ };
+  }, [token]);
 
   if (isLoading) {
     return (

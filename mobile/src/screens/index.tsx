@@ -24,6 +24,7 @@ export { CourierHistoryScreen } from './courier/CourierHistoryScreen';
 
 // Shared
 export const ProfileScreen = () => <View style={s.c}><Text>Profile (coming soon)</Text></View>;
-export const ChatScreen = () => <View style={s.c}><Text>Chat (Phase 5)</Text></View>;
+export { ChatScreen } from './chat/ChatScreen';
+export { NotificationsScreen } from './notifications/NotificationsScreen';
 
 const s = StyleSheet.create({ c: { flex: 1, justifyContent: 'center', alignItems: 'center' } });

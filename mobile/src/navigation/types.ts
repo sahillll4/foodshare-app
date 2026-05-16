@@ -34,6 +34,7 @@ export type AppStackParamList = {
   Chat: { listingId: string; title: string };
   JobDetail: { jobId: string };
   ActiveJob: { jobId: string };
+  Notifications: undefined;
 };
 
 export type RootStackParamList = {
