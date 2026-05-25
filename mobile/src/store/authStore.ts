@@ -13,6 +13,8 @@ export interface User {
   roles: UserRole[];
   verified: boolean;
   avatarUrl: string | null;
+  impactPoints?: number;
+  impactMeals?: number;
 }
 
 interface AuthState {

@@ -27,10 +27,26 @@ const ReceiverTab = createBottomTabNavigator<ReceiverTabParamList>();
 const CourierTab = createBottomTabNavigator<CourierTabParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
 
-const TAB_OPTIONS = {
+import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+import { typography, shadows } from '../theme';
+
+const TAB_OPTIONS: BottomTabNavigationOptions = {
   tabBarActiveTintColor: colors.primary,
   tabBarInactiveTintColor: colors.textSecondary,
   headerShown: false,
+  tabBarStyle: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 0,
+    ...shadows.lg,
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  tabBarLabelStyle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    marginTop: 2,
+  },
 };
 
 const DonorTabs = () => (

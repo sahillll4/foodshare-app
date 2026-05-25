@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, StatusBar } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
-import { Clock, MapPin, Package, ChevronRight } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Clock, MapPin, Package, ChevronRight, Plus, LogOut } from 'lucide-react-native';
 import { DonorTabParamList } from '../../navigation/types';
-import { colors, typography, spacing } from '../../theme';
+import { colors, typography, spacing, gradients, radius, shadows, foodTypeConfig, statusConfig } from '../../theme';
 import { api } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 
-// Normally this would be shared, but defining locally for now
 export interface Listing {
   id: string;
   title: string;
-  foodType: 'veg' | 'non-veg' | 'both';
+  foodType: 'veg' | 'non_veg' | 'both';
   quantityText: string;
   status: 'live' | 'claimed' | 'picked_up' | 'delivered' | 'cancelled';
   pickupEnd: string;
@@ -27,6 +27,7 @@ export const DonorHomeScreen = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const user = useAuthStore(state => state.user);
 
   const fetchListings = async () => {
     try {
@@ -53,59 +54,54 @@ export const DonorHomeScreen = () => {
     await useAuthStore.getState().logout();
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'live': return colors.success;
-      case 'claimed': return colors.accent;
-      case 'picked_up': return colors.primary;
-      case 'delivered': return colors.textSecondary;
-      case 'cancelled': return colors.error;
-      default: return colors.border;
-    }
-  };
-
   const renderItem = ({ item }: { item: Listing }) => {
     const isExpired = new Date(item.pickupEnd) < new Date() && item.status === 'live';
     const displayStatus = isExpired ? 'expired' : item.status;
+    const statConfig = statusConfig[displayStatus] || statusConfig.live;
+    const typeConfig = foodTypeConfig[item.foodType] || foodTypeConfig.veg;
 
     return (
       <TouchableOpacity 
         style={styles.card}
-        onPress={() => console.log('Navigate to detail:', item.id)}
+        activeOpacity={0.8}
+        onPress={() => console.log('Navigate to detail:', item.id)} // Replace with navigation later
       >
+        {/* Left Color Indicator based on Food Type */}
+        <View style={[styles.cardColorStrip, { backgroundColor: typeConfig.color }]} />
+
         {item.photoUrl ? (
           <Image source={{ uri: item.photoUrl }} style={styles.cardImage} />
         ) : (
           <View style={[styles.cardImage, styles.placeholderImage]}>
-            <Package color={colors.textSecondary} size={32} />
+            <Text style={{ fontSize: 32 }}>{typeConfig.emoji}</Text>
           </View>
         )}
         
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(displayStatus) + '20' }]}>
-              <Text style={[styles.statusText, { color: getStatusColor(displayStatus) }]}>
-                {displayStatus.toUpperCase()}
+            <View style={[styles.statusBadge, { backgroundColor: statConfig.color + '20' }]}>
+              <Text style={[styles.statusText, { color: statConfig.color }]}>
+                {statConfig.label}
               </Text>
             </View>
           </View>
 
           <View style={styles.cardRow}>
-            <Package size={16} color={colors.textSecondary} style={styles.icon} />
-            <Text style={styles.cardSubtitle}>{item.quantityText} • {item.foodType.toUpperCase()}</Text>
+            <Package size={14} color={colors.textSecondary} style={styles.icon} />
+            <Text style={styles.cardSubtitle}>{item.quantityText} • <Text style={{ color: typeConfig.color, fontWeight: '600' }}>{typeConfig.label}</Text></Text>
           </View>
 
           <View style={styles.cardRow}>
-            <Clock size={16} color={isExpired ? colors.error : colors.textSecondary} style={styles.icon} />
-            <Text style={[styles.cardSubtitle, isExpired && { color: colors.error }]}>
+            <Clock size={14} color={isExpired ? colors.error : colors.textSecondary} style={styles.icon} />
+            <Text style={[styles.cardSubtitle, isExpired && { color: colors.error, fontWeight: '600' }]}>
               {new Date(item.pickupEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
         </View>
 
         <View style={styles.chevron}>
-          <ChevronRight color={colors.textSecondary} size={20} />
+          <ChevronRight color={colors.borderStrong} size={20} />
         </View>
       </TouchableOpacity>
     );
@@ -113,15 +109,32 @@ export const DonorHomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Hero Header */}
+      <LinearGradient colors={gradients.hero} style={styles.header}>
         <View style={styles.headerTopRow}>
-          <Text style={styles.headerTitle}>My Donations</Text>
+          <View>
+            <Text style={styles.headerGreeting}>Hello, {user?.name?.split(' ')[0] || 'Donor'} 👋</Text>
+            <Text style={styles.headerTitle}>My Donations</Text>
+          </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
+            <LogOut color="#FFFFFF" size={20} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.headerSubtitle}>Thank you for sharing food today!</Text>
-      </View>
+
+        {/* Impact Stat */}
+        <View style={styles.impactCard}>
+          <View>
+            <Text style={styles.impactLabel}>People Fed</Text>
+            <Text style={styles.impactValue}>{user?.impactMeals || 0}</Text>
+          </View>
+          <View>
+            <Text style={styles.impactLabel}>Impact Points</Text>
+            <Text style={styles.impactValue}>{user?.impactPoints || 0}</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
       <FlatList
         data={listings}
@@ -132,19 +145,27 @@ export const DonorHomeScreen = () => {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <Package size={64} color={colors.border} />
-              <Text style={styles.emptyTitle}>No active listings</Text>
-              <Text style={styles.emptySubtitle}>You haven't posted any food yet.</Text>
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={() => navigation.navigate('PostListing')}
-              >
-                <Text style={styles.primaryButtonText}>Post Food Now</Text>
-              </TouchableOpacity>
+              <View style={styles.emptyIconBg}>
+                <Text style={{ fontSize: 48 }}>🥗</Text>
+              </View>
+              <Text style={styles.emptyTitle}>Share a Meal Today</Text>
+              <Text style={styles.emptySubtitle}>You haven't posted any food yet. Post your surplus food and help those in need.</Text>
             </View>
           ) : null
         }
       />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        style={styles.fab}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('PostListing')}
+      >
+        <LinearGradient colors={gradients.warm} style={styles.fabGradient}>
+          <Plus color="#FFFFFF" size={24} />
+          <Text style={styles.fabText}>Post Food</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -155,62 +176,81 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    padding: spacing.l,
-    paddingTop: spacing.xxl,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 60, // For safe area
+    paddingHorizontal: spacing.l,
+    paddingBottom: spacing.xl,
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
+    ...shadows.md,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.l,
   },
-  logoutButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.s,
-    backgroundColor: colors.error + '10',
-    borderRadius: 8,
-  },
-  logoutText: {
-    ...typography.caption,
-    color: colors.error,
-    fontWeight: '700',
+  headerGreeting: {
+    ...typography.bodyMd,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 2,
   },
   headerTitle: {
-    ...typography.heading,
+    ...typography.display,
+    color: '#FFFFFF',
   },
-  headerSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  impactCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: radius.md,
+    padding: spacing.m,
+  },
+  impactLabel: {
+    ...typography.label,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+  },
+  impactValue: {
+    ...typography.heading,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginTop: 2,
   },
   listContainer: {
     padding: spacing.m,
+    paddingBottom: 100, // Space for FAB
     flexGrow: 1,
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radius.md,
     marginBottom: spacing.m,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadows.sm,
     overflow: 'hidden',
+  },
+  cardColorStrip: {
+    width: 4,
+    height: '100%',
   },
   cardImage: {
     width: 80,
-    height: 100,
-    backgroundColor: colors.border,
+    height: '100%',
+    minHeight: 100,
+    backgroundColor: colors.surfaceAlt,
   },
   placeholderImage: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
   },
   cardContent: {
     flex: 1,
@@ -230,11 +270,10 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: radius.full,
   },
   statusText: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...typography.label,
   },
   cardRow: {
     flexDirection: 'row',
@@ -254,27 +293,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.xxl * 2,
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIconBg: {
+    width: 100, height: 100,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: spacing.l,
   },
   emptyTitle: {
-    ...typography.subhead,
-    marginTop: spacing.m,
+    ...typography.heading,
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
+    ...typography.bodyMd,
+    textAlign: 'center',
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
+  fab: {
+    position: 'absolute',
+    bottom: spacing.l,
+    alignSelf: 'center',
+    ...shadows.glowOrange,
+  },
+  fabGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: spacing.m,
-    paddingHorizontal: spacing.xl,
-    borderRadius: 8,
+    paddingHorizontal: spacing.l,
+    borderRadius: radius.full,
   },
-  primaryButtonText: {
-    color: colors.surface,
+  fabText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
-    fontWeight: '600',
+    marginLeft: spacing.xs,
   },
 });

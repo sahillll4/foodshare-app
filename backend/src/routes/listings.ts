@@ -42,43 +42,43 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response): Promise<vo
 
     if (food_type && cold_chain === 'true') {
       listings = await prisma.$queryRaw<ListingRow[]>`
-        SELECT fl.id, fl.title, fl.food_type, fl.quantity_text, fl.quantity_num,
-          fl.photo_url, fl.address_text, fl.latitude, fl.longitude,
-          fl.pickup_start, fl.pickup_end, fl.status, fl.requires_cold_chain, fl.needs_courier,
-          fl.donor_id, u.name AS donor_name, u.rating_avg AS donor_rating_avg,
-          (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) AS distance_m
-        FROM food_listings fl JOIN users u ON u.id = fl.donor_id
-        WHERE fl.status = 'live' AND fl.pickup_end > NOW() AND fl.flagged = false
-          AND fl.food_type = ${food_type} AND fl.requires_cold_chain = true
-        HAVING (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) <= ${radiusM}
+        SELECT fl.id, fl.title, fl."foodType", fl."quantityText", fl."quantityNum",
+          fl."photoUrl", fl."addressText", fl.latitude, fl.longitude,
+          fl."pickupStart", fl."pickupEnd", fl.status, fl."requiresColdChain", fl."needsCourier",
+          fl."donorId", u.name AS donor_name, u."ratingAvg" AS donor_rating_avg,
+          (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) AS distance_m
+        FROM food_listings fl JOIN users u ON u.id = fl."donorId"
+        WHERE fl.status = 'live' AND fl."pickupEnd" > NOW() AND fl.flagged = false
+          AND fl."foodType" = ${food_type} AND fl."requiresColdChain" = true
+          AND (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) <= ${radiusM}
         ORDER BY distance_m ASC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
     } else if (food_type) {
       listings = await prisma.$queryRaw<ListingRow[]>`
-        SELECT fl.id, fl.title, fl.food_type, fl.quantity_text, fl.quantity_num,
-          fl.photo_url, fl.address_text, fl.latitude, fl.longitude,
-          fl.pickup_start, fl.pickup_end, fl.status, fl.requires_cold_chain, fl.needs_courier,
-          fl.donor_id, u.name AS donor_name, u.rating_avg AS donor_rating_avg,
-          (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) AS distance_m
-        FROM food_listings fl JOIN users u ON u.id = fl.donor_id
-        WHERE fl.status = 'live' AND fl.pickup_end > NOW() AND fl.flagged = false AND fl.food_type = ${food_type}
-        HAVING (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) <= ${radiusM}
+        SELECT fl.id, fl.title, fl."foodType", fl."quantityText", fl."quantityNum",
+          fl."photoUrl", fl."addressText", fl.latitude, fl.longitude,
+          fl."pickupStart", fl."pickupEnd", fl.status, fl."requiresColdChain", fl."needsCourier",
+          fl."donorId", u.name AS donor_name, u."ratingAvg" AS donor_rating_avg,
+          (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) AS distance_m
+        FROM food_listings fl JOIN users u ON u.id = fl."donorId"
+        WHERE fl.status = 'live' AND fl."pickupEnd" > NOW() AND fl.flagged = false AND fl."foodType" = ${food_type}
+          AND (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) <= ${radiusM}
         ORDER BY distance_m ASC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
     } else {
       listings = await prisma.$queryRaw<ListingRow[]>`
-        SELECT fl.id, fl.title, fl.food_type, fl.quantity_text, fl.quantity_num,
-          fl.photo_url, fl.address_text, fl.latitude, fl.longitude,
-          fl.pickup_start, fl.pickup_end, fl.status, fl.requires_cold_chain, fl.needs_courier,
-          fl.donor_id, u.name AS donor_name, u.rating_avg AS donor_rating_avg,
-          (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) AS distance_m
-        FROM food_listings fl JOIN users u ON u.id = fl.donor_id
-        WHERE fl.status = 'live' AND fl.pickup_end > NOW() AND fl.flagged = false
-        HAVING (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) <= ${radiusM}
+        SELECT fl.id, fl.title, fl."foodType", fl."quantityText", fl."quantityNum",
+          fl."photoUrl", fl."addressText", fl.latitude, fl.longitude,
+          fl."pickupStart", fl."pickupEnd", fl.status, fl."requiresColdChain", fl."needsCourier",
+          fl."donorId", u.name AS donor_name, u."ratingAvg" AS donor_rating_avg,
+          (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) AS distance_m
+        FROM food_listings fl JOIN users u ON u.id = fl."donorId"
+        WHERE fl.status = 'live' AND fl."pickupEnd" > NOW() AND fl.flagged = false
+          AND (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) <= ${radiusM}
         ORDER BY distance_m ASC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
     }
 
@@ -153,21 +153,23 @@ router.post('/', requireAuth, requireRole('donor'), upload.single('photo'), asyn
       photoUrl = await uploadImage(req.file.buffer, 'food-listings');
     }
 
+    const toBool = (v: unknown) => v === true || v === 'true';
+
     const listing = await prisma.foodListing.create({
       data: {
         donorId: req.user!.id,
         title, description, foodType, quantityText,
-        quantityNum: quantityNum ? parseInt(quantityNum) : undefined,
+        quantityNum: quantityNum ? parseInt(String(quantityNum)) : undefined,
         photoUrl,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
+        latitude: parseFloat(String(latitude)),
+        longitude: parseFloat(String(longitude)),
         addressText,
         pickupStart: new Date(pickupStart),
         pickupEnd: new Date(pickupEnd),
         allergenNotes, packagingNotes,
-        requiresColdChain: requiresColdChain === 'true',
-        needsCourier: needsCourier === 'true',
-        isScheduled: isScheduled === 'true',
+        requiresColdChain: toBool(requiresColdChain),
+        needsCourier: toBool(needsCourier),
+        isScheduled: toBool(isScheduled),
         status: 'live',
       },
     });

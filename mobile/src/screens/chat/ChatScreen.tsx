@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, Platform } from 'react-native';
-import { GiftedChat, IMessage, Bubble, Send, InputToolbar } from 'react-native-gifted-chat';
+import {
+  View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Send as SendIcon } from 'lucide-react-native';
+import { Send } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
-import { colors, typography, spacing } from '../../theme';
+import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { api } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 import { connectSocket, joinListingRoom, leaveListingRoom, getSocket } from '../../lib/socket';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Chat'>;
 
-interface RawMessage {
+interface ChatMessage {
   id: string;
   content: string;
   createdAt: string;
@@ -22,30 +24,21 @@ interface RawMessage {
   };
 }
 
-const toGiftedMessage = (raw: RawMessage): IMessage => ({
-  _id: raw.id,
-  text: raw.content,
-  createdAt: new Date(raw.createdAt),
-  user: {
-    _id: raw.sender.id,
-    name: raw.sender.name ?? 'Anonymous',
-    avatar: raw.sender.avatarUrl ?? undefined,
-  },
-});
-
 export const ChatScreen = ({ route }: Props) => {
   const { listingId } = route.params;
   const user = useAuthStore((s) => s.user);
-  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [inputText, setInputText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
-  // Load message history
+  // Load history
   useEffect(() => {
     const load = async () => {
       try {
         const response = await api.get(`/messages/${listingId}`);
-        const history: RawMessage[] = response.data.messages ?? [];
-        setMessages(history.map(toGiftedMessage).reverse()); // GiftedChat expects newest first
+        setMessages((response.data.messages ?? []).reverse());
       } catch (error) {
         console.error('[Chat] Failed to load history:', error);
       } finally {
@@ -55,7 +48,7 @@ export const ChatScreen = ({ route }: Props) => {
     load();
   }, [listingId]);
 
-  // Connect socket and join room
+  // Socket
   useEffect(() => {
     const sock = connectSocket();
     joinListingRoom(listingId);
@@ -68,16 +61,15 @@ export const ChatScreen = ({ route }: Props) => {
       listingId: string;
       createdAt?: string;
     }) => {
-      // Don't add our own messages twice (we append optimistically on send)
       if (payload.senderId === user?.id) return;
 
-      const incoming: IMessage = {
-        _id: payload._id ?? Math.random().toString(),
-        text: payload.content,
-        createdAt: payload.createdAt ? new Date(payload.createdAt) : new Date(),
-        user: { _id: payload.senderId, name: payload.senderName },
+      const incoming: ChatMessage = {
+        id: payload._id ?? Math.random().toString(),
+        content: payload.content,
+        createdAt: payload.createdAt ?? new Date().toISOString(),
+        sender: { id: payload.senderId, name: payload.senderName, avatarUrl: null },
       };
-      setMessages((prev) => GiftedChat.append(prev, [incoming]));
+      setMessages((prev) => [incoming, ...prev]);
     };
 
     sock.on('message:new', handleNewMessage);
@@ -88,98 +80,215 @@ export const ChatScreen = ({ route }: Props) => {
     };
   }, [listingId, user?.id]);
 
-  const onSend = useCallback(async (newMessages: IMessage[] = []) => {
-    const msg = newMessages[0];
-    if (!msg || !user) return;
+  const handleSend = useCallback(async () => {
+    const text = inputText.trim();
+    if (!text || !user || isSending) return;
+
+    setInputText('');
+    setIsSending(true);
 
     // Optimistic append
-    setMessages((prev) => GiftedChat.append(prev, newMessages));
+    const optimistic: ChatMessage = {
+      id: Math.random().toString(),
+      content: text,
+      createdAt: new Date().toISOString(),
+      sender: { id: user.id, name: user.name, avatarUrl: null },
+    };
+    setMessages((prev) => [optimistic, ...prev]);
 
     try {
-      // Persist to DB
-      await api.post(`/messages/${listingId}`, {
-        content: msg.text,
-        receiverId: 'broadcast', // Server handles delivery to all room participants
-      });
-
-      // Broadcast via socket
+      await api.post(`/messages/${listingId}`, { content: text, receiverId: 'broadcast' });
       getSocket().emit('message:send', {
         listingId,
-        content: msg.text,
+        content: text,
         senderId: user.id,
         senderName: user.name ?? 'User',
         receiverId: 'broadcast',
-        _id: msg._id,
-        createdAt: new Date().toISOString(),
+        _id: optimistic.id,
+        createdAt: optimistic.createdAt,
       });
     } catch (error) {
-      console.error('[Chat] Failed to send message:', error);
+      console.error('[Chat] Failed to send:', error);
+    } finally {
+      setIsSending(false);
     }
-  }, [listingId, user]);
+  }, [inputText, listingId, user, isSending]);
+
+  const renderItem = ({ item }: { item: ChatMessage }) => {
+    const isMe = item.sender.id === user?.id;
+    const initials = (item.sender.name ?? 'U').charAt(0).toUpperCase();
+    const timeStr = new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    return (
+      <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
+        {!isMe && (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        )}
+        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
+          {!isMe && (
+            <Text style={styles.senderName}>{item.sender.name ?? 'Anonymous'}</Text>
+          )}
+          <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{item.content}</Text>
+          <Text style={[styles.timeText, isMe && styles.timeTextMe]}>{timeStr}</Text>
+        </View>
+      </View>
+    );
+  };
 
   if (isLoading) {
-    return <View style={styles.loading}><ActivityIndicator size="large" color={colors.primary} /></View>;
+    return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
   }
 
-  if (!user) return null;
-
   return (
-    <View style={styles.container}>
-      <GiftedChat
-        messages={messages}
-        onSend={onSend}
-        user={{ _id: user.id, name: user.name ?? 'You' }}
-        renderBubble={(props) => (
-          <Bubble
-            {...props}
-            wrapperStyle={{
-              right: { backgroundColor: colors.primary },
-              left: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-            }}
-            textStyle={{
-              right: { color: colors.surface },
-              left: { color: colors.textPrimary },
-            }}
-          />
-        )}
-        renderSend={(props) => (
-          <Send {...props} containerStyle={styles.sendContainer}>
-            <View style={styles.sendButton}>
-              <SendIcon size={20} color={colors.surface} />
-            </View>
-          </Send>
-        )}
-        renderInputToolbar={(props) => (
-          <InputToolbar
-            {...props}
-            containerStyle={styles.inputToolbar}
-            primaryStyle={styles.inputPrimary}
-          />
-        )}
-        listProps={{ keyboardDismissMode: 'interactive' }}
-      />
-    </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={90}
+    >
+      {messages.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>💬</Text>
+          <Text style={styles.emptyTitle}>No messages yet</Text>
+          <Text style={styles.emptySub}>Start the conversation with the donor or receiver.</Text>
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          inverted
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+
+      {/* Input bar */}
+      <View style={styles.inputBar}>
+        <TextInput
+          style={styles.input}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="Type a message..."
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          maxLength={500}
+          returnKeyType="default"
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!inputText.trim() || isSending) && styles.sendBtnDisabled]}
+          onPress={handleSend}
+          disabled={!inputText.trim() || isSending}
+          activeOpacity={0.8}
+        >
+          {isSending
+            ? <ActivityIndicator size="small" color="#FFF" />
+            : <Send size={20} color="#FFF" />
+          }
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  messagesContainer: { backgroundColor: colors.background, paddingBottom: 8 },
-  sendContainer: { justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.s },
-  sendButton: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center', alignItems: 'center',
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  listContent: { paddingHorizontal: spacing.m, paddingVertical: spacing.s },
+
+  // Empty state
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  emptyIcon: { fontSize: 48, marginBottom: spacing.m },
+  emptyTitle: { ...typography.subhead, marginBottom: spacing.xs },
+  emptySub: { ...typography.bodyMd, textAlign: 'center' },
+
+  // Message rows
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginVertical: spacing.xs,
+    gap: spacing.s,
   },
-  inputToolbar: {
+  messageRowMe: { flexDirection: 'row-reverse' },
+
+  // Avatar
+  avatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: colors.primary + '25',
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  avatarText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.primary },
+
+  // Bubbles
+  bubble: {
+    maxWidth: '75%',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    ...shadows.sm,
+  },
+  bubbleMe: {
+    backgroundColor: colors.primary,
+    borderBottomRightRadius: radius.sm,
+  },
+  bubbleThem: {
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  senderName: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  bubbleText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: colors.textPrimary,
+    lineHeight: 21,
+  },
+  bubbleTextMe: { color: '#FFFFFF' },
+  timeText: {
+    ...typography.caption,
+    marginTop: 4,
+    textAlign: 'right',
+    color: colors.textSecondary,
+  },
+  timeTextMe: { color: 'rgba(255,255,255,0.65)' },
+
+  // Input bar
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: spacing.m,
+    paddingBottom: spacing.l,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingHorizontal: spacing.s,
-    paddingVertical: spacing.xs,
+    gap: spacing.s,
   },
-  inputPrimary: {
-    alignItems: 'center',
+  input: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.sm,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: colors.textPrimary,
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
+  sendBtn: {
+    width: 44, height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    justifyContent: 'center', alignItems: 'center',
+    ...shadows.glow,
+  },
+  sendBtnDisabled: { backgroundColor: colors.borderStrong, shadowOpacity: 0 },
 });

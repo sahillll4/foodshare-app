@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import { Filter } from 'lucide-react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Filter, Search, MapPin } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
-import { colors, typography, spacing } from '../../theme';
+import { colors, typography, spacing, radius, shadows, foodTypeConfig } from '../../theme';
 import { api } from '../../api';
 
 type NavigationProp = NativeStackNavigationProp<AppStackParamList>;
@@ -13,7 +13,7 @@ type NavigationProp = NativeStackNavigationProp<AppStackParamList>;
 export interface Listing {
   id: string;
   title: string;
-  foodType: 'veg' | 'non-veg' | 'both';
+  foodType: 'veg' | 'non_veg' | 'both';
   quantityNum: number;
   quantityText: string;
   status: 'live' | 'claimed' | 'picked_up' | 'delivered' | 'cancelled';
@@ -31,28 +31,23 @@ export interface Listing {
   };
 }
 
-const FOOD_TYPE_COLORS = {
-  veg: colors.success,
-  'non-veg': '#DC2626',
-  both: colors.primary,
-};
-
 export const ReceiverMapScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Default Pune
   const [region, setRegion] = useState({
     latitude: 18.5204,
     longitude: 73.8567,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
+    latitudeDelta: 0.08,
+    longitudeDelta: 0.08,
   });
 
   const fetchNearbyFood = useCallback(async (lat: number, lng: number) => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/listings?lat=${lat}&lng=${lng}&radius=10000`);
+      const response = await api.get(`/listings?lat=${lat}&lng=${lng}&radius=15000`);
       setListings(response.data.listings ?? []);
     } catch (error) {
       console.error('Failed to fetch nearby food:', error);
@@ -61,20 +56,39 @@ export const ReceiverMapScreen = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchNearbyFood(region.latitude, region.longitude);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchNearbyFood(region.latitude, region.longitude);
+    }, [fetchNearbyFood]) // Removed region deps so it doesn't refetch constantly on pan
+  );
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+
       {/* Floating Search/Filter Bar */}
       <View style={styles.searchBarContainer}>
         <View style={styles.searchBar}>
+          <Search size={20} color={colors.textSecondary} style={styles.searchIcon} />
           <Text style={styles.searchText}>
-            {isLoading ? 'Finding food nearby...' : `${listings.length} listings found`}
+            {isLoading ? 'Finding food nearby...' : `${listings.length} places with food`}
           </Text>
-          <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color={colors.textPrimary} />
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
+            <Filter size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        
+        {/* Quick Filters */}
+        <View style={styles.quickFilters}>
+          <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]}>
+            <Text style={styles.filterChipTextActive}>All Food</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterChip}>
+            <Text style={styles.filterChipText}>Veg Only 🥗</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterChip}>
+            <Text style={styles.filterChipText}>Cold Chain ❄️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -84,26 +98,44 @@ export const ReceiverMapScreen = () => {
         provider={PROVIDER_GOOGLE}
         initialRegion={region}
         onRegionChangeComplete={(newRegion) => {
+          // In a real app we might want a "Search this area" button instead of auto-fetching
           setRegion(newRegion);
         }}
         showsUserLocation
-        showsMyLocationButton
+        showsMyLocationButton={false} // We will add a custom one if needed
+        mapPadding={{ top: 120, right: 0, bottom: 0, left: 0 }}
       >
-        {listings.map((listing) => (
-          <Marker
-            key={listing.id}
-            coordinate={{
-              latitude: listing.latitude,
-              longitude: listing.longitude,
-            }}
-            title={listing.title}
-            description={`${listing.quantityNum} ${listing.quantityText} • ${listing.foodType.toUpperCase()}`}
-            pinColor={FOOD_TYPE_COLORS[listing.foodType]}
-            onCalloutPress={() => {
-              navigation.navigate('ListingDetail', { listingId: listing.id });
-            }}
-          />
-        ))}
+        {listings.map((listing) => {
+          const foodType = foodTypeConfig[listing.foodType] || foodTypeConfig.veg;
+          return (
+            <Marker
+              key={listing.id}
+              coordinate={{
+                latitude: listing.latitude,
+                longitude: listing.longitude,
+              }}
+              tracksViewChanges={false} // Performance optimization
+            >
+              <View style={[styles.markerContainer, { backgroundColor: foodType.color }]}>
+                <Text style={styles.markerEmoji}>{foodType.emoji}</Text>
+              </View>
+              <View style={[styles.markerTriangle, { borderTopColor: foodType.color }]} />
+
+              <Callout 
+                tooltip
+                onPress={() => navigation.navigate('ListingDetail', { listingId: listing.id })}
+              >
+                <View style={styles.calloutCard}>
+                  <Text style={styles.calloutTitle} numberOfLines={1}>{listing.title}</Text>
+                  <Text style={styles.calloutSub}>
+                    {listing.quantityNum} {listing.quantityText} • {foodType.label}
+                  </Text>
+                  <Text style={styles.calloutAction}>Tap to claim →</Text>
+                </View>
+              </Callout>
+            </Marker>
+          );
+        })}
       </MapView>
 
       {isLoading && (
@@ -127,7 +159,7 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     left: spacing.m,
     right: spacing.m,
     zIndex: 10,
@@ -135,43 +167,122 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: 30,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.l,
-    paddingVertical: spacing.m,
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
+    ...shadows.md,
+  },
+  searchIcon: {
+    marginRight: spacing.sm,
   },
   searchText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    ...typography.bodyMd,
+    flex: 1,
+  },
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.sm,
   },
   filterButton: {
     padding: spacing.xs,
   },
+  quickFilters: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+    gap: spacing.s,
+  },
+  filterChip: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    borderRadius: radius.full,
+    ...shadows.sm,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+  },
+  filterChipText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  filterChipTextActive: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  
+  // Custom Marker
+  markerContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    ...shadows.sm,
+  },
+  markerEmoji: {
+    fontSize: 16,
+  },
+  markerTriangle: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 0,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    alignSelf: 'center',
+    marginTop: -1,
+  },
+  
+  // Callout
+  calloutCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.m,
+    width: 200,
+    ...shadows.md,
+    marginBottom: spacing.xs,
+  },
+  calloutTitle: {
+    ...typography.subhead,
+    marginBottom: 4,
+  },
+  calloutSub: {
+    ...typography.caption,
+    marginBottom: spacing.s,
+  },
+  calloutAction: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    color: colors.primary,
+  },
+
+  // Loading
   loadingOverlay: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 30,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.l,
-    paddingVertical: spacing.m,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    ...shadows.md,
     gap: spacing.s,
   },
   loadingText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.bodyMd,
+    fontFamily: 'Inter_500Medium',
   },
 });

@@ -13,16 +13,18 @@ router.post('/:id/claim', requireAuth, requireRole('receiver'), async (req: Auth
     const listingId = req.params['id'] as string;
 
     const result = await prisma.$transaction(async (tx) => {
-      type ListingLockRow = { id: string; status: string; pickup_end: Date; needs_courier: boolean; quantity_num: number };
+      type ListingLockRow = { id: string; status: string; "pickupEnd": Date; "needsCourier": boolean; "quantityNum": number };
       const listing = await tx.$queryRaw<ListingLockRow[]>`
-        SELECT id, status, pickup_end, needs_courier, quantity_num
+        SELECT id, status, "pickupEnd", "needsCourier"::boolean, "quantityNum"
         FROM food_listings WHERE id = ${listingId}::uuid FOR UPDATE`;
+
+      console.log('[CLAIM DEBUG] raw listing row:', JSON.stringify(listing[0]));
 
       if (!listing.length) throw new Error('NOT_FOUND');
       const l = listing[0]!;
       if (l.status !== 'live') throw new Error('NOT_AVAILABLE');
 
-      const minutesLeft = (new Date(l.pickup_end).getTime() - Date.now()) / 60000;
+      const minutesLeft = (new Date(l.pickupEnd).getTime() - Date.now()) / 60000;
       if (minutesLeft < MIN_CLAIMABLE_MINUTES) throw new Error('TOO_LATE');
 
       const expiresAt = new Date(Date.now() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
@@ -32,7 +34,7 @@ router.post('/:id/claim', requireAuth, requireRole('receiver'), async (req: Auth
 
       await tx.foodListing.update({ where: { id: listingId }, data: { status: 'claimed' } });
 
-      if (l.needs_courier) {
+      if (l.needsCourier) {
         await tx.courierJob.create({ data: { listingId, claimId: claim.id, status: 'open' } });
       }
 

@@ -1,240 +1,261 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Alert
-} from 'react-native';
-import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import { MapPin, Clock, Package, Star, Snowflake, MessageCircle } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, StatusBar, Dimensions } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MapPin, Clock, Package, Snowflake, AlertTriangle, ShieldCheck } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
-import { colors, typography, spacing } from '../../theme';
+import { colors, typography, spacing, radius, shadows, gradients, foodTypeConfig } from '../../theme';
 import { api } from '../../api';
-import { useAuthStore } from '../../store/authStore';
-import type { Listing } from './ReceiverMapScreen';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ListingDetail'>;
+const { width } = Dimensions.get('window');
 
-export const ListingDetailScreen = ({ route }: Props) => {
+interface ListingDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  foodType: 'veg' | 'non_veg' | 'both';
+  quantityNum: number;
+  quantityText: string;
+  photoUrl: string | null;
+  status: string;
+  addressText: string;
+  latitude: number;
+  longitude: number;
+  pickupStart: string;
+  pickupEnd: string;
+  allergenNotes: string | null;
+  packagingNotes: string | null;
+  requiresColdChain: boolean;
+  donor: { id: string; name: string | null; ratingAvg: number };
+}
+
+export const ListingDetailScreen = ({ route, navigation }: Props) => {
   const { listingId } = route.params;
-  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const user = useAuthStore((s) => s.user);
-
-  const [listing, setListing] = useState<Listing | null>(null);
+  const [listing, setListing] = useState<ListingDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
-    const fetchListing = async () => {
+    const fetchDetail = async () => {
       try {
         const response = await api.get(`/listings/${listingId}`);
         setListing(response.data.listing);
       } catch (error) {
-        console.error('Failed to fetch listing:', error);
+        console.error('Failed to fetch listing detail:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchListing();
+    fetchDetail();
   }, [listingId]);
-
-  // Countdown timer
-  useEffect(() => {
-    if (!listing) return;
-    const tick = () => {
-      const end = new Date(listing.pickupEnd).getTime();
-      const diff = Math.max(0, end - Date.now());
-      const hrs = Math.floor(diff / 3600000);
-      const mins = Math.floor((diff % 3600000) / 60000);
-      const secs = Math.floor((diff % 60000) / 1000);
-      setTimeLeft(hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m ${secs}s`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [listing]);
 
   const handleClaim = async () => {
     setIsClaiming(true);
     try {
       const response = await api.post(`/listings/${listingId}/claim`);
-      Alert.alert(
-        '🎉 Food Claimed!',
-        `You have 30 minutes to pick it up. Hurry!`,
-        [{
-          text: 'View Active Claim',
-          onPress: () => navigation.navigate('ActiveClaim', {
-            claimId: response.data.claim.id,
-            listingId,
-          }),
-        }]
-      );
+      navigation.replace('ActiveClaim', { claimId: response.data.claim.id, listingId });
     } catch (error: any) {
-      const msg = error?.response?.data?.error || 'This listing was just claimed by someone else. Try another!';
-      Alert.alert('Oops! Too slow 😅', msg);
+      console.error('Claim error:', error);
+      alert(error.response?.data?.error || 'Failed to claim');
     } finally {
       setIsClaiming(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+  if (isLoading || !listing) {
+    return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
   }
 
-  if (!listing) {
-    return (
-      <View style={styles.centered}>
-        <Text style={typography.body}>Listing not found.</Text>
-      </View>
-    );
-  }
-
-  const isExpired = new Date(listing.pickupEnd) < new Date();
-  const isUrgent = (new Date(listing.pickupEnd).getTime() - Date.now()) < 30 * 60 * 1000;
-  const isDonor = user?.id === listing.donor.id;
-  const canClaim = listing.status === 'live' && !isExpired && !isDonor;
+  const foodType = foodTypeConfig[listing.foodType] || foodTypeConfig.veg;
+  const minsLeft = Math.max(0, Math.floor((new Date(listing.pickupEnd).getTime() - Date.now()) / 60000));
+  const isAvailable = listing.status === 'live' && minsLeft > 0;
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Photo */}
-      {listing.photoUrl ? (
-        <Image source={{ uri: listing.photoUrl }} style={styles.photo} />
-      ) : (
-        <View style={[styles.photo, styles.photoPlaceholder]}>
-          <Package size={48} color={colors.border} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
+        
+        {/* Hero Image Section */}
+        <View style={styles.heroContainer}>
+          {listing.photoUrl ? (
+            <Image source={{ uri: listing.photoUrl }} style={styles.heroImage} />
+          ) : (
+            <View style={[styles.heroImage, styles.placeholderHero]}>
+              <Text style={{ fontSize: 64 }}>{foodType.emoji}</Text>
+            </View>
+          )}
+          
+          <LinearGradient colors={gradients.imageOverlay} style={styles.heroOverlay}>
+            <View style={styles.heroChips}>
+              <View style={[styles.chip, { backgroundColor: foodType.color }]}>
+                <Text style={styles.chipText}>{foodType.label}</Text>
+              </View>
+              {listing.requiresColdChain && (
+                <View style={[styles.chip, { backgroundColor: colors.info }]}>
+                  <Snowflake size={12} color="#FFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.chipText}>Cold Chain</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.heroTitle}>{listing.title}</Text>
+            <Text style={styles.heroDonor}>Donated by {listing.donor.name || 'Anonymous'}</Text>
+          </LinearGradient>
         </View>
-      )}
 
-      <View style={styles.content}>
-        {/* Title & urgency */}
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>{listing.title}</Text>
-          {listing.requiresColdChain && (
-            <View style={styles.coldBadge}>
-              <Snowflake size={14} color={colors.primary} />
-              <Text style={styles.coldText}>Cold</Text>
+        {/* Content Section */}
+        <View style={styles.body}>
+          
+          {/* Info Cards Row */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoCard}>
+              <Package size={20} color={colors.primary} />
+              <Text style={styles.infoCardVal}>{listing.quantityNum}</Text>
+              <Text style={styles.infoCardLabel}>{listing.quantityText}</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <Clock size={20} color={colors.primary} />
+              <Text style={styles.infoCardVal}>{minsLeft}</Text>
+              <Text style={styles.infoCardLabel}>Mins left</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <ShieldCheck size={20} color={colors.primary} />
+              <Text style={styles.infoCardVal}>{listing.donor.ratingAvg.toFixed(1)}</Text>
+              <Text style={styles.infoCardLabel}>Rating</Text>
+            </View>
+          </View>
+
+          {/* Location */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pickup Location</Text>
+            <View style={styles.locationBox}>
+              <MapPin size={20} color={colors.textSecondary} />
+              <Text style={styles.locationText}>{listing.addressText}</Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          {listing.description && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.descriptionText}>{listing.description}</Text>
+            </View>
+          )}
+
+          {/* Alerts */}
+          {(listing.allergenNotes || listing.packagingNotes) && (
+            <View style={styles.alertBox}>
+              <AlertTriangle size={20} color={colors.warning} />
+              <View style={{ flex: 1, marginLeft: spacing.s }}>
+                {listing.allergenNotes && (
+                  <Text style={styles.alertText}><Text style={{ fontWeight: '700' }}>Allergens:</Text> {listing.allergenNotes}</Text>
+                )}
+                {listing.packagingNotes && (
+                  <Text style={[styles.alertText, listing.allergenNotes ? { marginTop: 4 } : null]}>
+                    <Text style={{ fontWeight: '700' }}>Packaging:</Text> {listing.packagingNotes}
+                  </Text>
+                )}
+              </View>
             </View>
           )}
         </View>
+      </ScrollView>
 
-        {/* Countdown */}
-        <View style={[styles.timerBox, isUrgent && styles.timerBoxUrgent]}>
-          <Clock size={18} color={isUrgent ? colors.error : colors.primary} />
-          <Text style={[styles.timerText, isUrgent && styles.timerTextUrgent]}>
-            {isExpired ? 'Expired' : `Pickup ends in ${timeLeft}`}
-          </Text>
-        </View>
-
-        {/* Food info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Food Info</Text>
-          <View style={styles.row}>
-            <Package size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>
-              {listing.quantityNum} {listing.quantityText} • {listing.foodType.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pickup Location</Text>
-          <View style={styles.row}>
-            <MapPin size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{listing.addressText}</Text>
-          </View>
-        </View>
-
-        {/* Donor */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared by</Text>
-          <View style={styles.donorRow}>
-            <View style={styles.donorAvatar}>
-              <Text style={styles.donorAvatarText}>
-                {listing.donor.name?.charAt(0)?.toUpperCase() ?? '?'}
-              </Text>
-            </View>
-            <View>
-              <Text style={styles.donorName}>{listing.donor.name ?? 'Anonymous Donor'}</Text>
-              <View style={styles.row}>
-                <Star size={14} color={colors.accent} />
-                <Text style={styles.donorRating}>
-                  {listing.donor.ratingAvg > 0 ? listing.donor.ratingAvg.toFixed(1) : 'New'}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.chatButton}
-              onPress={() => navigation.navigate('Chat', { listingId, title: listing.title })}
-            >
-              <MessageCircle size={18} color={colors.primary} />
-              <Text style={styles.chatText}>Chat</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Claim button */}
-        {canClaim && (
-          <TouchableOpacity
-            style={[styles.claimButton, isClaiming && styles.claimButtonDisabled]}
-            onPress={handleClaim}
-            disabled={isClaiming}
+      {/* Sticky Bottom Action */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity 
+          style={[styles.primaryBtn, (!isAvailable || isClaiming) && styles.btnDisabled]}
+          onPress={handleClaim}
+          disabled={!isAvailable || isClaiming}
+          activeOpacity={0.85}
+        >
+          <LinearGradient 
+            colors={isAvailable ? gradients.hero : [colors.borderStrong, colors.borderStrong]} 
+            style={styles.primaryBtnGradient}
           >
-            {isClaiming
-              ? <ActivityIndicator color={colors.surface} />
-              : <Text style={styles.claimButtonText}>Claim This Food</Text>
-            }
-          </TouchableOpacity>
-        )}
-
-        {listing.status === 'claimed' && (
-          <View style={styles.claimedBox}>
-            <Text style={styles.claimedText}>This food has already been claimed.</Text>
-          </View>
-        )}
-
-        {isDonor && (
-          <View style={styles.claimedBox}>
-            <Text style={styles.claimedText}>This is your own listing.</Text>
-          </View>
-        )}
+            {isClaiming ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {isAvailable ? 'Claim Food Now' : 'No longer available'}
+              </Text>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  photo: { width: '100%', height: 240, backgroundColor: colors.border },
-  photoPlaceholder: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' },
-  content: { padding: spacing.l },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.m },
-  title: { ...typography.heading, flex: 1, marginRight: spacing.m },
-  coldBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
-  coldText: { fontSize: 12, fontWeight: '600', color: colors.primary },
-  timerBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '10', borderRadius: 10, padding: spacing.m, marginBottom: spacing.l, gap: spacing.s },
-  timerBoxUrgent: { backgroundColor: colors.error + '10' },
-  timerText: { ...typography.subhead, color: colors.primary },
-  timerTextUrgent: { color: colors.error },
+  scrollContent: { paddingBottom: 100 },
+  
+  // Hero
+  heroContainer: { height: 280, width: '100%', position: 'relative' },
+  heroImage: { width: '100%', height: '100%' },
+  placeholderHero: { backgroundColor: colors.surfaceAlt, justifyContent: 'center', alignItems: 'center' },
+  heroOverlay: { 
+    position: 'absolute', bottom: 0, left: 0, right: 0, 
+    padding: spacing.l, paddingTop: 60,
+  },
+  heroChips: { flexDirection: 'row', gap: spacing.s, marginBottom: spacing.s },
+  chip: { 
+    flexDirection: 'row', alignItems: 'center', 
+    paddingHorizontal: 10, paddingVertical: 4, 
+    borderRadius: radius.full 
+  },
+  chipText: { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#FFF', textTransform: 'uppercase' },
+  heroTitle: { ...typography.display, color: '#FFF' },
+  heroDonor: { ...typography.bodyMd, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+
+  // Body
+  body: { padding: spacing.l },
+  
+  // Stats row
+  infoRow: { 
+    flexDirection: 'row', gap: spacing.m, 
+    marginTop: -40, marginBottom: spacing.l,
+    zIndex: 2,
+  },
+  infoCard: { 
+    flex: 1, backgroundColor: colors.surface, 
+    borderRadius: radius.md, padding: spacing.m, 
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  infoCardVal: { ...typography.subhead, marginTop: spacing.xs, marginBottom: 2 },
+  infoCardLabel: { ...typography.caption },
+
+  // Sections
   section: { marginBottom: spacing.l },
-  sectionTitle: { ...typography.subhead, marginBottom: spacing.s },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.s },
-  infoText: { ...typography.body, color: colors.textSecondary, flex: 1 },
-  donorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.m },
-  donorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  donorAvatarText: { color: colors.surface, fontWeight: '700', fontSize: 18 },
-  donorName: { ...typography.subhead, fontSize: 15 },
-  donorRating: { ...typography.caption, color: colors.textSecondary, marginLeft: 2 },
-  chatButton: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderWidth: 1, borderColor: colors.primary, borderRadius: 8, paddingHorizontal: spacing.m, paddingVertical: spacing.s },
-  chatText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
-  claimButton: { backgroundColor: colors.primary, paddingVertical: spacing.l, borderRadius: 12, alignItems: 'center', marginTop: spacing.l },
-  claimButtonDisabled: { opacity: 0.7 },
-  claimButtonText: { color: colors.surface, fontSize: 18, fontWeight: '700' },
-  claimedBox: { backgroundColor: colors.border, padding: spacing.m, borderRadius: 10, marginTop: spacing.l, alignItems: 'center' },
-  claimedText: { color: colors.textSecondary, fontWeight: '600' },
+  sectionTitle: { ...typography.subhead, marginBottom: spacing.sm },
+  locationBox: { 
+    flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: colors.surface, padding: spacing.m, 
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.border 
+  },
+  locationText: { ...typography.body, flex: 1, marginLeft: spacing.s },
+  descriptionText: { ...typography.body, color: colors.textSecondary, lineHeight: 24 },
+
+  // Alert
+  alertBox: { 
+    flexDirection: 'row', backgroundColor: colors.warning + '15', 
+    padding: spacing.m, borderRadius: radius.md, 
+    borderWidth: 1, borderColor: colors.warning + '40',
+  },
+  alertText: { ...typography.bodyMd, color: '#92400E' },
+
+  // Bottom bar
+  bottomBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: colors.surface,
+    padding: spacing.l, paddingBottom: spacing.xl,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  primaryBtn: { borderRadius: radius.md, overflow: 'hidden', ...shadows.glow },
+  primaryBtnGradient: { paddingVertical: 16, alignItems: 'center' },
+  primaryBtnText: { color: '#FFF', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  btnDisabled: { opacity: 0.7, shadowOpacity: 0 },
 });

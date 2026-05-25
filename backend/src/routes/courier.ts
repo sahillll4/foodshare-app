@@ -33,34 +33,34 @@ router.get('/jobs', requireAuth, requireRole('courier'), async (req: AuthRequest
 
     if (cold_chain === 'true') {
       jobs = await prisma.$queryRaw<JobRow[]>`
-        SELECT cj.id, cj.listing_id, cj.claim_id, cj.status, cj.vehicle_type,
-          fl.title, fl.food_type, fl.quantity_num, fl.quantity_text, fl.pickup_end,
-          fl.requires_cold_chain, fl.address_text AS donor_address, fl.latitude, fl.longitude,
+        SELECT cj.id, cj."listingId", cj."claimId", cj.status, cj."vehicleType",
+          fl.title, fl."foodType", fl."quantityNum", fl."quantityText", fl."pickupEnd",
+          fl."requiresColdChain", fl."addressText" AS donor_address, fl.latitude, fl.longitude,
           u.name AS donor_name,
-          (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) AS distance_m
+          (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) AS distance_m
         FROM courier_jobs cj
-        JOIN food_listings fl ON fl.id = cj.listing_id
-        JOIN users u ON u.id = fl.donor_id
-        WHERE cj.status = 'open' AND cj.courier_id IS NULL AND fl.pickup_end > NOW()
-          AND fl.requires_cold_chain = true
-        HAVING (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) <= ${radiusM}
+        JOIN food_listings fl ON fl.id = cj."listingId"
+        JOIN users u ON u.id = fl."donorId"
+        WHERE cj.status = 'open' AND cj."courierId" IS NULL AND fl."pickupEnd" > NOW()
+          AND fl."requiresColdChain" = true
+          AND (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) <= ${radiusM}
         ORDER BY distance_m ASC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
     } else {
       jobs = await prisma.$queryRaw<JobRow[]>`
-        SELECT cj.id, cj.listing_id, cj.claim_id, cj.status, cj.vehicle_type,
-          fl.title, fl.food_type, fl.quantity_num, fl.quantity_text, fl.pickup_end,
-          fl.requires_cold_chain, fl.address_text AS donor_address, fl.latitude, fl.longitude,
+        SELECT cj.id, cj."listingId", cj."claimId", cj.status, cj."vehicleType",
+          fl.title, fl."foodType", fl."quantityNum", fl."quantityText", fl."pickupEnd",
+          fl."requiresColdChain", fl."addressText" AS donor_address, fl.latitude, fl.longitude,
           u.name AS donor_name,
-          (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) AS distance_m
+          (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) AS distance_m
         FROM courier_jobs cj
-        JOIN food_listings fl ON fl.id = cj.listing_id
-        JOIN users u ON u.id = fl.donor_id
-        WHERE cj.status = 'open' AND cj.courier_id IS NULL AND fl.pickup_end > NOW()
-        HAVING (6371000 * acos(cos(radians(${latF})) * cos(radians(fl.latitude)) *
-            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))) <= ${radiusM}
+        JOIN food_listings fl ON fl.id = cj."listingId"
+        JOIN users u ON u.id = fl."donorId"
+        WHERE cj.status = 'open' AND cj."courierId" IS NULL AND fl."pickupEnd" > NOW()
+          AND (6371000 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(${latF})) * cos(radians(fl.latitude)) *
+            cos(radians(fl.longitude) - radians(${lngF})) + sin(radians(${latF})) * sin(radians(fl.latitude)))))) <= ${radiusM}
         ORDER BY distance_m ASC LIMIT ${parseInt(limit)} OFFSET ${offset}`;
     }
 
@@ -108,13 +108,13 @@ router.post('/jobs/:id/accept', requireAuth, requireRole('courier'), async (req:
     const jobId = req.params['id'] as string;
 
     const job = await prisma.$transaction(async (tx) => {
-      type JobLockRow = { id: string; status: string; courier_id: string | null };
+      type JobLockRow = { id: string; status: string; courierId: string | null };
       const existing = await tx.$queryRaw<JobLockRow[]>`
-        SELECT id, status, courier_id FROM courier_jobs WHERE id = ${jobId}::uuid FOR UPDATE`;
+        SELECT id, status, "courierId" FROM courier_jobs WHERE id = ${jobId}::uuid FOR UPDATE`;
 
       if (!existing.length) throw new Error('NOT_FOUND');
       const e = existing[0]!;
-      if (e.status !== 'open' || e.courier_id) throw new Error('NOT_AVAILABLE');
+      if (e.status !== 'open' || e.courierId) throw new Error('NOT_AVAILABLE');
 
       return tx.courierJob.update({
         where: { id: jobId },
