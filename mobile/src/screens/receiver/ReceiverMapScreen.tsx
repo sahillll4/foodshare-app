@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, StatusBar 
 import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Filter, Search, MapPin } from 'lucide-react-native';
+import { Filter, Search, MapPin, Bell } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
 import { colors, typography, spacing, radius, shadows, foodTypeConfig } from '../../theme';
 import { api } from '../../api';
@@ -74,6 +74,9 @@ export const ReceiverMapScreen = () => {
             {isLoading ? 'Finding food nearby...' : `${listings.length} places with food`}
           </Text>
           <View style={styles.divider} />
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.iconButton}>
+            <Bell color={colors.primary} size={20} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
             <Filter size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -185,6 +188,10 @@ const styles = StyleSheet.create({
     height: 24,
     backgroundColor: colors.border,
     marginHorizontal: spacing.sm,
+  },
+  iconButton: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
   },
   filterButton: {
     padding: spacing.xs,

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole, AuthRequest } from '../middleware/auth';
+import { sendPushNotification } from '../lib/notifications';
 
 const router = Router();
 
@@ -45,6 +46,16 @@ router.post('/:id/claim', requireAuth, requireRole('receiver'), async (req: Auth
       claim: result.claim,
       message: `Food reserved until ${result.claim.expiresAt?.toISOString()}`,
     });
+
+    // Notify Donor
+    const listingWithDonor = await prisma.foodListing.findUnique({ where: { id: listingId }, select: { donorId: true, title: true } });
+    if (listingWithDonor) {
+      await sendPushNotification(listingWithDonor.donorId, 'claimed', {
+        title: 'Food Claimed!',
+        body: `Your listing "${listingWithDonor.title}" has been claimed and will be picked up soon.`,
+        data: { screen: 'DonorListingDetail', listingId },
+      });
+    }
   } catch (err) {
     const msg = (err as Error).message;
     if (msg === 'NOT_FOUND') { res.status(404).json({ error: 'Listing not found' }); return; }

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Ima
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, MapPin, Package, ChevronRight, Plus, LogOut } from 'lucide-react-native';
+import { Clock, MapPin, Package, ChevronRight, Plus, LogOut, Bell } from 'lucide-react-native';
 import { DonorTabParamList } from '../../navigation/types';
 import { colors, typography, spacing, gradients, radius, shadows, foodTypeConfig, statusConfig } from '../../theme';
 import { api } from '../../api';
@@ -64,7 +64,7 @@ export const DonorHomeScreen = () => {
       <TouchableOpacity 
         style={styles.card}
         activeOpacity={0.8}
-        onPress={() => console.log('Navigate to detail:', item.id)} // Replace with navigation later
+        onPress={() => navigation.navigate('DonorListingDetail', { listingId: item.id })}
       >
         {/* Left Color Indicator based on Food Type */}
         <View style={[styles.cardColorStrip, { backgroundColor: typeConfig.color }]} />
@@ -118,9 +118,14 @@ export const DonorHomeScreen = () => {
             <Text style={styles.headerGreeting}>Hello, {user?.name?.split(' ')[0] || 'Donor'} 👋</Text>
             <Text style={styles.headerTitle}>My Donations</Text>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <LogOut color="#FFFFFF" size={20} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: spacing.m }}>
+            <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.iconButton}>
+              <Bell color="#FFFFFF" size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.iconButton}>
+              <LogOut color="#FFFFFF" size={20} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Impact Stat */}
@@ -198,7 +203,7 @@ const styles = StyleSheet.create({
     ...typography.display,
     color: '#FFFFFF',
   },
-  logoutButton: {
+  iconButton: {
     width: 40,
     height: 40,
     borderRadius: radius.full,

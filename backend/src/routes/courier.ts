@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole, AuthRequest } from '../middleware/auth';
+import { sendPushNotification } from '../lib/notifications';
 
 const router = Router();
 const COURIER_POINTS = parseInt(process.env['COURIER_POINTS_PER_DELIVERY'] || '10');
@@ -124,6 +125,22 @@ router.post('/jobs/:id/accept', requireAuth, requireRole('courier'), async (req:
     });
 
     res.json({ job });
+
+    // Notify Donor
+    await sendPushNotification(job.listing.donorId, 'courier_accepted', {
+      title: 'Courier on the way!',
+      body: `A courier has accepted the job to pick up "${job.listing.title}".`,
+      data: { screen: 'DonorListingDetail', listingId: job.listing.id },
+    });
+    // Notify Receiver (if there's a claim)
+    const claim = await prisma.claim.findFirst({ where: { id: job.claimId || '' } });
+    if (claim) {
+      await sendPushNotification(claim.receiverId, 'courier_accepted', {
+        title: 'Courier on the way!',
+        body: `A courier is heading to pick up "${job.listing.title}".`,
+        data: { screen: 'ActiveClaim', claimId: claim.id, listingId: job.listing.id },
+      });
+    }
   } catch (err) {
     const msg = (err as Error).message;
     if (msg === 'NOT_FOUND') { res.status(404).json({ error: 'Job not found' }); return; }
@@ -148,6 +165,16 @@ router.patch('/jobs/:id/picked-up', requireAuth, requireRole('courier'), async (
     ]);
 
     res.json({ success: true });
+
+    // Notify Receiver
+    const claim = await prisma.claim.findFirst({ where: { id: job.claimId || '' } });
+    if (claim) {
+      await sendPushNotification(claim.receiverId, 'picked_up', {
+        title: 'Food Picked Up!',
+        body: `The courier has picked up the food and is heading your way.`,
+        data: { screen: 'ActiveClaim', claimId: claim.id, listingId: job.listingId },
+      });
+    }
   } catch (err) {
     console.error('Picked up error:', err);
     res.status(500).json({ error: 'Failed to mark as picked up' });
@@ -180,6 +207,22 @@ router.patch('/jobs/:id/delivered', requireAuth, requireRole('courier'), async (
     ]);
 
     res.json({ success: true, pointsAwarded: COURIER_POINTS });
+
+    // Notify Donor
+    await sendPushNotification(job.listing.donorId, 'delivered', {
+      title: 'Delivery Complete!',
+      body: `The courier has delivered "${job.listing.title}". Thank you for sharing!`,
+      data: { screen: 'DonorListingDetail', listingId: job.listingId },
+    });
+    // Notify Receiver
+    const claim = await prisma.claim.findFirst({ where: { id: job.claimId || '' } });
+    if (claim) {
+      await sendPushNotification(claim.receiverId, 'delivered', {
+        title: 'Food Delivered!',
+        body: `The courier has arrived with your food.`,
+        data: { screen: 'ActiveClaim', claimId: claim.id, listingId: job.listingId },
+      });
+    }
   } catch (err) {
     console.error('Delivered error:', err);
     res.status(500).json({ error: 'Failed to mark as delivered' });

@@ -30,6 +30,7 @@ export type AppStackParamList = {
   ReceiverTabs: NavigatorScreenParams<ReceiverTabParamList>;
   CourierTabs: NavigatorScreenParams<CourierTabParamList>;
   ListingDetail: { listingId: string };
+  DonorListingDetail: { listingId: string };
   ActiveClaim: { claimId: string; listingId: string };
   Chat: { listingId: string; title: string };
   JobDetail: { jobId: string };

@@ -6,7 +6,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Navigation, CheckCircle, Package, MapPin } from 'lucide-react-native';
+import { Navigation, CheckCircle, Package, MapPin, MessageCircle } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../api';
@@ -214,6 +214,26 @@ export const ActiveJobScreen = ({ route }: Props) => {
         ))}
       </View>
 
+      {/* Chat Buttons */}
+      <View style={{ flexDirection: 'row', gap: spacing.m, paddingHorizontal: spacing.l, marginBottom: spacing.l }}>
+        <TouchableOpacity 
+          style={styles.chatButton}
+          onPress={() => navigation.navigate('Chat', { listingId: job.listing.id, title: job.donor.name || 'Donor' })}
+        >
+          <MessageCircle size={20} color={colors.primary} />
+          <Text style={styles.chatButtonText}>Chat with Donor</Text>
+        </TouchableOpacity>
+        {job.receiver && (
+          <TouchableOpacity 
+            style={styles.chatButton}
+            onPress={() => navigation.navigate('Chat', { listingId: job.listing.id, title: job.receiver?.name || 'Receiver' })}
+          >
+            <MessageCircle size={20} color={colors.primary} />
+            <Text style={styles.chatButtonText}>Chat with Receiver</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {/* Primary CTA */}
       <View style={styles.ctaContainer}>
         {job.status === 'accepted' && (
@@ -303,4 +323,11 @@ const styles = StyleSheet.create({
   deliverButton: { backgroundColor: colors.success },
   disabled: { opacity: 0.6 },
   ctaText: { color: colors.surface, fontSize: 18, fontWeight: '700' },
+  chatButton: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface, borderRadius: 12,
+    borderWidth: 1.5, borderColor: colors.primary,
+    paddingVertical: spacing.m, gap: spacing.s,
+  },
+  chatButtonText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
 });

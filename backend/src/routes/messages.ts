@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { sendPushNotification } from '../lib/notifications';
 
 const router = Router();
 
@@ -39,6 +40,14 @@ router.post('/:listingId', requireAuth, async (req: AuthRequest, res: Response):
     });
 
     res.status(201).json({ message });
+
+    // Notify the receiver of the message
+    const listing = await prisma.foodListing.findUnique({ where: { id: listingId }, select: { title: true } });
+    await sendPushNotification(receiverId, 'message', {
+      title: `New message from ${message.sender.name}`,
+      body: content.trim(),
+      data: { screen: 'Chat', listingId, title: listing?.title },
+    });
   } catch (err) {
     console.error('Send message error:', err);
     res.status(500).json({ error: 'Failed to send message' });

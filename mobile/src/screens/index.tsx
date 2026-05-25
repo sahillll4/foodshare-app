@@ -9,6 +9,7 @@ export const ProfileSetupScreen = () => <View style={s.c}><Text>Profile Setup (c
 // Donor
 export { DonorHomeScreen } from './donor/DonorHomeScreen';
 export { PostListingScreen } from './donor/PostListingScreen';
+export { DonorListingDetailScreen } from './donor/DonorListingDetailScreen';
 
 // Receiver
 export { ReceiverMapScreen } from './receiver/ReceiverMapScreen';
@@ -26,6 +27,6 @@ export { CourierHistoryScreen } from './courier/CourierHistoryScreen';
 export { ProfileScreen } from './profile/ProfileScreen';
 export { RatingModalScreen } from './ratings/RatingModalScreen';
 export { ChatScreen } from './chat/ChatScreen';
-export { NotificationsScreen } from './notifications/NotificationsScreen';
+export { NotificationsScreen } from './common/NotificationsScreen';
 
 const s = StyleSheet.create({ c: { flex: 1, justifyContent: 'center', alignItems: 'center' } });

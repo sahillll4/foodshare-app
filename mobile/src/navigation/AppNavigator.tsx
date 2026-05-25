@@ -10,6 +10,7 @@ import {
   JobBoardScreen, CourierHistoryScreen,
   ProfileScreen,
   ListingDetailScreen,
+  DonorListingDetailScreen,
   ActiveClaimScreen,
   ChatScreen,
   JobDetailScreen,
@@ -97,6 +98,8 @@ export const AppNavigator = () => (
     {/* Shared stack screens */}
     <AppStack.Screen name="ListingDetail" component={ListingDetailScreen}
       options={{ headerShown: true, title: 'Food Details', headerBackTitle: 'Back' }} />
+    <AppStack.Screen name="DonorListingDetail" component={DonorListingDetailScreen}
+      options={{ headerShown: true, title: 'Listing Status', headerBackTitle: 'Back' }} />
     <AppStack.Screen name="ActiveClaim" component={ActiveClaimScreen}
       options={{ headerShown: true, title: 'Active Claim', headerBackTitle: 'Back' }} />
     <AppStack.Screen name="Chat" component={ChatScreen}

@@ -6,7 +6,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Package, Clock, MapPin, Snowflake, ChevronRight, Truck, Zap } from 'lucide-react-native';
+import { Package, Clock, MapPin, Snowflake, ChevronRight, Truck, Zap, Bell } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
 import { colors, typography, spacing, radius, shadows, gradients, foodTypeConfig } from '../../theme';
 import { api } from '../../api';
