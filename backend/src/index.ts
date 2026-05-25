@@ -13,6 +13,7 @@ import courierRouter from './routes/courier';
 import messagesRouter from './routes/messages';
 import ratingsRouter from './routes/ratings';
 import notificationsRouter from './routes/notifications';
+import reportsRouter from './routes/reports';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
 import './workers/expiryWorker';
@@ -79,6 +80,7 @@ app.use('/api/courier', courierRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/ratings', ratingsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/reports', reportsRouter);
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);

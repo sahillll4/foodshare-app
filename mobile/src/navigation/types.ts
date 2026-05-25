@@ -36,6 +36,7 @@ export type AppStackParamList = {
   JobDetail: { jobId: string };
   ActiveJob: { jobId: string };
   Notifications: undefined;
+  ImpactDashboard: undefined;
   RatingModal: {
     listingId: string;
     ratedUserId: string;

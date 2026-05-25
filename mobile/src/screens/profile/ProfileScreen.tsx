@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
-import { Leaf, Award, Star, MapPin, Share2, LogOut } from 'lucide-react-native';
+import { Leaf, Award, Star, MapPin, Share2, LogOut, ChevronRight } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../api';
 import { useAuthStore } from '../../store/authStore';
+import { useNavigation } from '@react-navigation/native';
 
 interface ImpactStats {
   id: string;
@@ -21,6 +22,7 @@ interface ImpactStats {
 
 export const ProfileScreen = () => {
   const { user, logout } = useAuthStore();
+  const navigation = useNavigation();
   const [stats, setStats] = useState<ImpactStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -113,26 +115,36 @@ export const ProfileScreen = () => {
       {/* Role-Specific Stats */}
       <Text style={styles.sectionTitle}>Activity Overview</Text>
       
-      {isDonor && (
-        <View style={styles.statsContainer}>
-          <StatRow label="Listings Posted" value={stats.listingsPosted.toString()} />
-          <StatRow label="Successfully Donated" value={stats.listingsDelivered.toString()} />
-        </View>
-      )}
-
-      {isReceiver && (
-        <View style={styles.statsContainer}>
-          <StatRow label="Food Claims Made" value={stats.claimsCollected.toString()} />
-          <StatRow label="Organizations Served" value="1" />
-        </View>
-      )}
-
-      {isCourier && (
-        <View style={styles.statsContainer}>
-          <StatRow icon={<Award size={18} color={colors.primary} />} label="Impact Points Earned" value={stats.impactPoints.toString()} />
-          <StatRow label="Deliveries Completed" value={stats.jobsDelivered.toString()} />
-        </View>
-      )}
+      <View style={styles.statsContainer}>
+        <TouchableOpacity 
+          style={styles.impactBtn}
+          onPress={() => navigation.navigate('ImpactDashboard' as never)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.m }}>
+            <Award size={20} color={colors.primary} />
+            <Text style={{ ...typography.subhead }}>Open Impact Dashboard</Text>
+          </View>
+          <ChevronRight size={20} color={colors.borderStrong} />
+        </TouchableOpacity>
+        {isDonor && (
+          <>
+            <StatRow label="Listings Posted" value={stats.listingsPosted.toString()} />
+            <StatRow label="Successfully Donated" value={stats.listingsDelivered.toString()} />
+          </>
+        )}
+        {isReceiver && (
+          <>
+            <StatRow label="Food Claims Made" value={stats.claimsCollected.toString()} />
+            <StatRow label="Organizations Served" value="1" />
+          </>
+        )}
+        {isCourier && (
+          <>
+            <StatRow label="Impact Points Earned" value={stats.impactPoints.toString()} />
+            <StatRow label="Deliveries Completed" value={stats.jobsDelivered.toString()} />
+          </>
+        )}
+      </View>
 
       {/* Actions */}
       <View style={styles.actionsContainer}>
@@ -229,4 +241,9 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   actionBtnText: { ...typography.subhead, color: colors.primary },
+  impactBtn: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: spacing.m, borderBottomWidth: 1, borderBottomColor: colors.border,
+    backgroundColor: colors.primary + '10'
+  }
 });

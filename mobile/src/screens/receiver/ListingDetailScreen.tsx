@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, StatusBar, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, StatusBar, Dimensions, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MapPin, Clock, Package, Snowflake, AlertTriangle, ShieldCheck } from 'lucide-react-native';
+import { MapPin, Clock, Package, Snowflake, AlertTriangle, ShieldCheck, Flag } from 'lucide-react-native';
 import { AppStackParamList } from '../../navigation/types';
 import { colors, typography, spacing, radius, shadows, gradients, foodTypeConfig } from '../../theme';
 import { api } from '../../api';
@@ -49,6 +49,31 @@ export const ListingDetailScreen = ({ route, navigation }: Props) => {
     };
     fetchDetail();
   }, [listingId]);
+
+  const handleReport = () => {
+    Alert.prompt(
+      'Report Listing',
+      'Why are you reporting this listing?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Report', 
+          style: 'destructive',
+          onPress: async (reason) => {
+            if (!reason) return;
+            try {
+              await api.post('/reports', { listingId: listing?.id, reason });
+              Alert.alert('Reported', 'This listing has been hidden for review.');
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert('Error', 'Failed to report. Please try again.');
+            }
+          }
+        }
+      ],
+      'plain-text'
+    );
+  };
 
   const handleClaim = async () => {
     setIsClaiming(true);
@@ -158,6 +183,12 @@ export const ListingDetailScreen = ({ route, navigation }: Props) => {
               </View>
             </View>
           )}
+
+          {/* Report Button */}
+          <TouchableOpacity style={styles.reportBtn} onPress={handleReport}>
+            <Flag size={18} color={colors.textSecondary} />
+            <Text style={styles.reportBtnText}>Report this listing</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -246,6 +277,21 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.warning + '40',
   },
   alertText: { ...typography.bodyMd, color: '#92400E' },
+
+  // Report Button
+  reportBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    padding: spacing.m,
+  },
+  reportBtnText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
 
   // Bottom bar
   bottomBar: {

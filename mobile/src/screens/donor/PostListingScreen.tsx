@@ -3,16 +3,20 @@ import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Switch
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 import { Camera, MapPin, Clock, Info } from 'lucide-react-native';
 import { DonorTabParamList } from '../../navigation/types';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../api';
+import { useOfflineStore } from '../../store/offlineStore';
 
 type NavigationProp = NativeStackNavigationProp<DonorTabParamList, 'PostListing'>;
 
 export const PostListingScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [isLoading, setIsLoading] = useState(false);
+  const addPendingListing = useOfflineStore(state => state.addPendingListing);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -86,8 +90,9 @@ export const PostListingScreen = () => {
         },
       });
 
-      Alert.alert('Success', 'Food listed successfully!');
-      navigation.navigate('DonorHome');
+      Alert.alert('Success', 'Food listed successfully!', [
+        { text: 'OK', onPress: () => navigation.navigate('DonorHome') }
+      ]);
       
       // Reset form
       setTitle('');
@@ -95,9 +100,35 @@ export const PostListingScreen = () => {
       setPhotoUri(null);
       setQuantityNum('10');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submit error:', error);
-      Alert.alert('Error', 'Failed to post listing. We will save it offline (coming in Phase 6).');
+      
+      // Check if it's a network error
+      if (error.message === 'Network Error' || error.code === 'ECONNABORTED' || !error.response) {
+        addPendingListing({
+          id: uuidv4(),
+          title,
+          description,
+          foodType,
+          quantityNum: parseInt(quantityNum),
+          quantityText,
+          requiresColdChain,
+          latitude,
+          longitude,
+          addressText,
+          pickupStart,
+          pickupEnd,
+          photoUri: photoUri || undefined,
+        });
+        
+        Alert.alert(
+          'Saved Offline', 
+          'You are offline. Your listing has been saved and will be posted automatically when you reconnect!',
+          [{ text: 'OK', onPress: () => navigation.navigate('DonorHome') }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to post listing. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }

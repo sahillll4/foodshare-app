@@ -28,5 +28,6 @@ export { ProfileScreen } from './profile/ProfileScreen';
 export { RatingModalScreen } from './ratings/RatingModalScreen';
 export { ChatScreen } from './chat/ChatScreen';
 export { NotificationsScreen } from './common/NotificationsScreen';
+export { ImpactDashboardScreen } from './common/ImpactDashboardScreen';
 
 const s = StyleSheet.create({ c: { flex: 1, justifyContent: 'center', alignItems: 'center' } });

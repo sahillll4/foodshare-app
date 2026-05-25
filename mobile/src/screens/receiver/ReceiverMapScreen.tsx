@@ -35,6 +35,9 @@ export const ReceiverMapScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Filter States
+  const [activeFilter, setActiveFilter] = useState<'all' | 'veg' | 'cold'>('all');
 
   // Default Pune
   const [region, setRegion] = useState({
@@ -44,10 +47,15 @@ export const ReceiverMapScreen = () => {
     longitudeDelta: 0.08,
   });
 
-  const fetchNearbyFood = useCallback(async (lat: number, lng: number) => {
+  const fetchNearbyFood = useCallback(async (lat: number, lng: number, filterMode: 'all' | 'veg' | 'cold') => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/listings?lat=${lat}&lng=${lng}&radius=15000`);
+      let query = `/listings?lat=${lat}&lng=${lng}&radius=15000`;
+      
+      if (filterMode === 'veg') query += `&food_type=veg`;
+      if (filterMode === 'cold') query += `&cold_chain=true`;
+
+      const response = await api.get(query);
       setListings(response.data.listings ?? []);
     } catch (error) {
       console.error('Failed to fetch nearby food:', error);
@@ -58,8 +66,8 @@ export const ReceiverMapScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchNearbyFood(region.latitude, region.longitude);
-    }, [fetchNearbyFood]) // Removed region deps so it doesn't refetch constantly on pan
+      fetchNearbyFood(region.latitude, region.longitude, activeFilter);
+    }, [fetchNearbyFood, activeFilter]) // Refetch when filter changes
   );
 
   return (
@@ -84,14 +92,23 @@ export const ReceiverMapScreen = () => {
         
         {/* Quick Filters */}
         <View style={styles.quickFilters}>
-          <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]}>
-            <Text style={styles.filterChipTextActive}>All Food</Text>
+          <TouchableOpacity 
+            style={[styles.filterChip, activeFilter === 'all' && styles.filterChipActive]}
+            onPress={() => setActiveFilter('all')}
+          >
+            <Text style={activeFilter === 'all' ? styles.filterChipTextActive : styles.filterChipText}>All Food</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.filterChip}>
-            <Text style={styles.filterChipText}>Veg Only 🥗</Text>
+          <TouchableOpacity 
+            style={[styles.filterChip, activeFilter === 'veg' && styles.filterChipActive]}
+            onPress={() => setActiveFilter('veg')}
+          >
+            <Text style={activeFilter === 'veg' ? styles.filterChipTextActive : styles.filterChipText}>Veg Only 🥗</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.filterChip}>
-            <Text style={styles.filterChipText}>Cold Chain ❄️</Text>
+          <TouchableOpacity 
+            style={[styles.filterChip, activeFilter === 'cold' && styles.filterChipActive]}
+            onPress={() => setActiveFilter('cold')}
+          >
+            <Text style={activeFilter === 'cold' ? styles.filterChipTextActive : styles.filterChipText}>Cold Chain ❄️</Text>
           </TouchableOpacity>
         </View>
       </View>

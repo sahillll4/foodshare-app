@@ -6,9 +6,11 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
+import { useNetworkSync } from './src/hooks/useNetworkSync';
 
 export default function App() {
   usePushNotifications();
+  useNetworkSync();
   
   const [fontsLoaded] = useFonts({
     Inter_400Regular,

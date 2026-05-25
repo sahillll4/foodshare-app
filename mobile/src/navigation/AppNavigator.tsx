@@ -16,6 +16,7 @@ import {
   JobDetailScreen,
   ActiveJobScreen,
   NotificationsScreen,
+  ImpactDashboardScreen,
   RatingModalScreen,
 } from '../screens';
 import {
@@ -121,6 +122,8 @@ export const AppNavigator = () => (
       }} />
     <AppStack.Screen name="Notifications" component={NotificationsScreen}
       options={{ headerShown: true, title: 'Notifications', headerBackTitle: 'Back' }} />
+    <AppStack.Screen name="ImpactDashboard" component={ImpactDashboardScreen}
+      options={{ headerShown: true, title: 'My Impact', headerBackTitle: 'Back', headerStyle: { backgroundColor: colors.primary }, headerTintColor: '#FFFFFF' }} />
     <AppStack.Screen name="RatingModal" component={RatingModalScreen}
       options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
   </AppStack.Navigator>
